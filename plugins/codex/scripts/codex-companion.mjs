@@ -631,6 +631,9 @@ async function executeCodeAlignmentRun(request) {
     REVIEWER_FOCUS: request.focusText || "Check all alignment categories."
   });
   const resolvedCodePath = path.resolve(request.cwd, request.codePath);
+  if (!fs.existsSync(resolvedCodePath)) {
+    throw new Error(`--code path does not exist: ${resolvedCodePath}`);
+  }
   const codePath = fs.statSync(resolvedCodePath).isDirectory() ? resolvedCodePath : path.dirname(resolvedCodePath);
   const result = await runAppServerTurn(codePath, {
     prompt,
@@ -643,7 +646,6 @@ async function executeCodeAlignmentRun(request) {
 
   let parsed = null;
   try {
-    const { extractJsonFromThoughtResponse } = await import("./lib/panel-review.mjs");
     parsed = extractJsonFromThoughtResponse(typeof result.finalMessage === "string" ? result.finalMessage : "");
   } catch {
     const fallback = parseStructuredOutput(result.finalMessage, {
@@ -949,7 +951,7 @@ async function handleReview(argv) {
 
 async function handlePaperReview(argv) {
   const { options, positionals } = parseCommandInput(argv, {
-    valueOptions: ["model", "effort", "cwd", "title", "venue", "reviewers", "docs", "code"],
+    valueOptions: ["model", "effort", "cwd", "title", "venue", "docs", "code"],
     booleanOptions: ["json", "background", "wait", "panel", "reflect"],
     aliasMap: {
       m: "model"
@@ -969,6 +971,10 @@ async function handlePaperReview(argv) {
 
   const { documentContent: paperContent, supplementaryDocs } = parseStdinContent(rawStdin);
   const paperTitle = options.title || "";
+
+  if (options.venue && !options.panel) {
+    throw new Error("--venue requires --panel. Use `/codex:paper-review --panel --venue <name>` for venue-calibrated panel review.");
+  }
 
   if (options.panel) {
     const venueCalibration = options.venue ? getVenueCalibration(options.venue) : null;
@@ -1096,7 +1102,7 @@ async function handlePaperReview(argv) {
 
 async function handleGrantReview(argv) {
   const { options, positionals } = parseCommandInput(argv, {
-    valueOptions: ["model", "effort", "cwd", "title", "agency", "reviewers", "docs", "code"],
+    valueOptions: ["model", "effort", "cwd", "title", "agency", "docs", "code"],
     booleanOptions: ["json", "background", "wait", "panel", "reflect"],
     aliasMap: {
       m: "model"
@@ -1116,6 +1122,13 @@ async function handleGrantReview(argv) {
 
   const { documentContent: proposalContent, supplementaryDocs } = parseStdinContent(rawStdin);
   const proposalTitle = options.title || "";
+
+  if (options.agency) {
+    const agencyCheck = getAgencyCalibration(options.agency);
+    if (!agencyCheck) {
+      throw new Error(`Unknown agency "${options.agency}". Supported: horizon, erc, ukri, dfg, anr, snsf, nwo, nih, nsf, doe, darpa.`);
+    }
+  }
 
   if (options.panel) {
     const agencyCalibration = options.agency ? getAgencyCalibration(options.agency) : null;

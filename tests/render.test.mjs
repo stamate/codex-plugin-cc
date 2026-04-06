@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { renderPaperReviewResult, renderPanelReviewResult, renderReviewResult, renderStoredJobResult } from "../plugins/codex/scripts/lib/render.mjs";
+import { renderCodeAlignmentResult, renderPaperReviewResult, renderPanelReviewResult, renderReviewResult, renderStoredJobResult } from "../plugins/codex/scripts/lib/render.mjs";
 
 test("renderReviewResult degrades gracefully when JSON is missing required review fields", () => {
   const output = renderReviewResult(
@@ -110,6 +110,48 @@ test("renderPaperReviewResult renders structured paper review", () => {
   const majorIdx = output.indexOf("[major]");
   const minorIdx = output.indexOf("[minor]");
   assert.ok(majorIdx < minorIdx, "Major findings should sort before minor findings");
+});
+
+test("renderCodeAlignmentResult renders alignment findings and verdict", () => {
+  const output = renderCodeAlignmentResult({
+    parsed: {
+      alignment_verdict: "minor-discrepancies",
+      summary: "Code mostly matches the paper with two small differences.",
+      alignment_findings: [
+        {
+          category: "hyperparameter-mismatch",
+          severity: "minor",
+          title: "Learning rate differs",
+          paper_claim: "Paper reports lr=0.001",
+          code_evidence: "Config file sets lr=0.0005",
+          recommendation: "Update paper or config to match."
+        }
+      ],
+      reproducibility_assessment: "Results are largely reproducible with minor config adjustments."
+    },
+    rawOutput: "{}"
+  });
+
+  assert.match(output, /## Code-Methods Alignment/);
+  assert.match(output, /Verdict: minor-discrepancies/);
+  assert.match(output, /Code mostly matches/);
+  assert.match(output, /hyperparameter-mismatch/);
+  assert.match(output, /Paper claims: Paper reports lr=0.001/);
+  assert.match(output, /Code shows: Config file sets lr=0.0005/);
+  assert.match(output, /### Reproducibility Assessment/);
+});
+
+test("renderCodeAlignmentResult handles null parsed result", () => {
+  const output = renderCodeAlignmentResult({ parsed: null, rawOutput: "some raw text" });
+  assert.match(output, /Code-Methods Alignment/);
+  assert.match(output, /Could not parse/);
+  assert.match(output, /some raw text/);
+});
+
+test("renderCodeAlignmentResult handles completely missing result", () => {
+  const output = renderCodeAlignmentResult(null);
+  assert.match(output, /Code-Methods Alignment/);
+  assert.match(output, /did not return results/);
 });
 
 test("renderPanelReviewResult renders score table, individual reviews, and meta-review", () => {

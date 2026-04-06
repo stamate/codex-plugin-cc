@@ -218,6 +218,24 @@ Single-reviewer mode returns a structured review with recommendation (accept / m
 
 Panel mode additionally includes a score comparison table across all reviewers, consensus points, disagreements, priority action items, and the Area Chair's meta-review.
 
+#### Supplementary documents (`--docs`)
+
+Use `--docs <folder>` to include call guidelines, submission instructions, or prior reviewer feedback as additional context for the review:
+
+```bash
+/codex:paper-review paper.pdf --docs ./submission-guidelines/
+/codex:paper-review paper.pdf --panel --venue neurips --docs ./call-docs/
+```
+
+#### Code-methods alignment (`--code`)
+
+Use `--code <path>` to cross-validate the paper's methods against the actual implementation code. Codex reads the codebase and checks for hyperparameter mismatches, undocumented preprocessing steps, data leakage, and other discrepancies:
+
+```bash
+/codex:paper-review paper.pdf --code ./experiments/
+/codex:paper-review paper.pdf --panel --code ./src/ focus on statistical implementation
+```
+
 ### `/codex:grant-review`
 
 Runs a Codex peer review of a research grant proposal (PDF, Word, Markdown, or plain text).
@@ -276,6 +294,13 @@ Use `--agency <name>` with `--panel` to calibrate the review to a specific fundi
 Single-reviewer mode returns a structured review with recommendation (fund / fund-with-revisions / revise-and-resubmit / do-not-fund), strengths, weaknesses, detailed findings per review dimension, questions for investigators, and overall assessment.
 
 Panel mode additionally includes a score comparison table across all reviewers, consensus points, disagreements, priority action items, and the panel's funding recommendation.
+
+Grant review also supports `--docs <folder>` for including call guidelines, and `--code <path>` for reviewing preliminary data code:
+
+```bash
+/codex:grant-review proposal.pdf --panel --agency horizon --docs ./call-guidelines/
+/codex:grant-review proposal.pdf --code ./pilot-study/
+```
 
 ### `/codex:status`
 
