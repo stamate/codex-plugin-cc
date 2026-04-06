@@ -100,8 +100,8 @@ function printUsage() {
     [
       "Usage:",
       "  node scripts/codex-companion.mjs setup [--enable-review-gate|--disable-review-gate] [--json]",
-      "  node scripts/codex-companion.mjs paper-review [--panel] [--venue <venue>] [--reflect] [--model <model>] [--effort <effort>] [--title <title>] [focus text]  (reads paper from stdin)",
-      "  node scripts/codex-companion.mjs grant-review [--panel] [--agency <agency>] [--reflect] [--model <model>] [--effort <effort>] [--title <title>] [focus text]  (reads proposal from stdin)",
+      "  node scripts/codex-companion.mjs paper-review [--panel] [--venue <venue>] [--docs <folder>] [--code <path>] [--model <model>] [--effort <effort>] [--title <title>] [focus text]  (reads paper from stdin)",
+      "  node scripts/codex-companion.mjs grant-review [--panel] [--agency <agency>] [--docs <folder>] [--code <path>] [--model <model>] [--effort <effort>] [--title <title>] [focus text]  (reads proposal from stdin)",
       "  node scripts/codex-companion.mjs review [--wait|--background] [--base <ref>] [--scope <auto|working-tree|branch>]",
       "  node scripts/codex-companion.mjs adversarial-review [--wait|--background] [--base <ref>] [--scope <auto|working-tree|branch>] [focus text]",
       "  node scripts/codex-companion.mjs task [--background] [--write] [--resume-last|--resume|--fresh] [--model <model|spark>] [--effort <none|minimal|low|medium|high|xhigh>] [prompt]",

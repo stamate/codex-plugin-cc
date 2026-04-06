@@ -24,6 +24,7 @@ export function buildPersonaPrompt({ templateRootDir, persona, paperContent, pap
   const template = loadPromptTemplate(templateRootDir, persona.templateName);
   return interpolateTemplate(template, {
     PAPER_TITLE: paperTitle || "Untitled",
+    PROPOSAL_TITLE: paperTitle || "Untitled",
     REVIEWER_FOCUS: focusText || "No specific focus provided. Review all dimensions.",
     VENUE_CALIBRATION: venueCalibration || "",
     AGENCY_CALIBRATION: venueCalibration || "",
@@ -190,7 +191,10 @@ export async function executePanelReviewRun(request, dependencies) {
     });
   });
 
-  const personaResults = await Promise.all(personaPromises);
+  const settledResults = await Promise.allSettled(personaPromises);
+  const personaResults = settledResults.map((settled) =>
+    settled.status === "fulfilled" ? settled.value : { status: 1, finalMessage: "", error: settled.reason, stderr: String(settled.reason?.message ?? ""), reasoningSummary: [] }
+  );
 
   const parsedReviews = [];
   for (let i = 0; i < personaResults.length; i++) {

@@ -90,7 +90,6 @@ test("paper-review command reads paper via stdin and stays review-only", () => {
   assert.doesNotMatch(source, /Bash\(git:/);
   assert.match(source, /--panel/);
   assert.match(source, /--venue/);
-  assert.match(source, /--reflect/);
   assert.match(source, /Empiricist.*Theorist.*Practitioner/i);
   assert.match(source, /neurips.*icml.*iclr.*acl.*nature.*workshop/i);
 });

@@ -1,6 +1,6 @@
 ---
 description: Run a Codex peer review of an academic paper
-argument-hint: '<file> [--panel] [--venue <neurips|icml|iclr|acl|nature|workshop>] [--docs <folder>] [--code <path>] [--reflect] [--wait|--background] [--model <model>] [--effort <effort>] [--title <title>] [focus ...]'
+argument-hint: '<file> [--panel] [--venue <neurips|icml|iclr|acl|nature|workshop>] [--docs <folder>] [--code <path>] [--wait|--background] [--model <model>] [--effort <effort>] [--title <title>] [focus ...]'
 disable-model-invocation: true
 allowed-tools: Read, Bash(node:*), AskUserQuestion
 ---
@@ -26,7 +26,6 @@ Paper reading:
 Panel review mode:
 - If `--panel` is present, the companion script runs 3 parallel Codex reviews with distinct personas (Empiricist, Theorist, Practitioner) and then synthesizes them via an Area Chair meta-review.
 - `--venue <name>` calibrates the review to a specific venue's standards. Supported: neurips, icml, iclr, acl, nature, workshop.
-- `--reflect` adds a self-reflection round where each reviewer refines their initial assessment.
 - Panel mode takes significantly longer than single review. Always recommend background.
 - Pass all panel flags through to the companion script.
 
