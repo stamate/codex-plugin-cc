@@ -145,6 +145,16 @@ export function formatReviewsForMetaPrompt(reviews) {
       lines.push("");
     }
 
+    if (review.budget_assessment) {
+      lines.push(`Budget Assessment: ${review.budget_assessment}`, "");
+    }
+    if (review.timeline_assessment) {
+      lines.push(`Timeline Assessment: ${review.timeline_assessment}`, "");
+    }
+    if (review.risk_assessment) {
+      lines.push(`Risk Assessment: ${review.risk_assessment}`, "");
+    }
+
     lines.push(`Overall Assessment: ${review.overall_assessment}`);
     sections.push(lines.join("\n"));
   }
@@ -207,6 +217,19 @@ export async function executePanelReviewRun(request, dependencies) {
   }
 
   const validReviews = parsedReviews.filter((r) => r.parsed != null).map((r) => r.parsed);
+
+  if (validReviews.length === 0) {
+    return {
+      exitStatus: 1,
+      threadId: null,
+      turnId: null,
+      individualReviews: parsedReviews,
+      validReviews,
+      metaReview: null,
+      weightedScores: {},
+      venueCalibration: request.venueCalibration
+    };
+  }
 
   const reviewsText = formatReviewsForMetaPrompt(validReviews);
   const metaPrompt = buildMetaReviewPrompt({

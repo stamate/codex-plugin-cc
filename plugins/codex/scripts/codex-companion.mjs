@@ -68,7 +68,8 @@ import {
 } from "./lib/render.mjs";
 import {
   PERSONAS,
-  executePanelReviewRun as runPanelReview
+  executePanelReviewRun as runPanelReview,
+  extractJsonFromThoughtResponse
 } from "./lib/panel-review.mjs";
 import { getVenueCalibration } from "./lib/venue-calibration.mjs";
 import { getAgencyCalibration } from "./lib/agency-calibration.mjs";
@@ -177,6 +178,20 @@ function resolveCommandCwd(options = {}) {
 
 function resolveCommandWorkspace(options = {}) {
   return resolveWorkspaceRoot(resolveCommandCwd(options));
+}
+
+function parseReviewOutput(rawMessage, fallbackOptions) {
+  if (typeof rawMessage === "string" && rawMessage.trim()) {
+    try {
+      const extracted = extractJsonFromThoughtResponse(rawMessage);
+      if (extracted) {
+        return { parsed: extracted, parseError: null, rawOutput: rawMessage };
+      }
+    } catch {
+      // fall through to parseStructuredOutput
+    }
+  }
+  return parseStructuredOutput(rawMessage, fallbackOptions);
 }
 
 function sleep(ms) {
@@ -507,7 +522,7 @@ async function executePaperReviewRun(request) {
     outputSchema: readOutputSchema(PAPER_REVIEW_SCHEMA),
     onProgress: request.onProgress
   });
-  const parsed = parseStructuredOutput(result.finalMessage, {
+  const parsed = parseReviewOutput(result.finalMessage, {
     status: result.status,
     failureMessage: result.error?.message ?? result.stderr
   });
@@ -565,7 +580,7 @@ async function executeGrantReviewRun(request) {
     outputSchema: readOutputSchema(GRANT_REVIEW_SCHEMA),
     onProgress: request.onProgress
   });
-  const parsed = parseStructuredOutput(result.finalMessage, {
+  const parsed = parseReviewOutput(result.finalMessage, {
     status: result.status,
     failureMessage: result.error?.message ?? result.stderr
   });
