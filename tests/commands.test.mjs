@@ -70,11 +70,37 @@ test("adversarial review command uses AskUserQuestion and background Bash while 
   assert.match(source, /can still take extra focus text after the flags/i);
 });
 
+test("paper-review command reads paper via stdin and stays review-only", () => {
+  const source = read("commands/paper-review.md");
+  assert.match(source, /AskUserQuestion/);
+  assert.match(source, /\bBash\(/);
+  assert.match(source, /Do not fix issues/i);
+  assert.match(source, /review-only/i);
+  assert.match(source, /return.*verbatim/i);
+  assert.match(source, /paper-review/);
+  assert.match(source, /--title/);
+  assert.match(source, /PAPER_EOF/);
+  assert.match(source, /\bRead\b/);
+  assert.match(source, /run_in_background:\s*true/);
+  assert.match(source, /description:\s*"Codex paper review"/);
+  assert.match(source, /Do not call `BashOutput`/);
+  assert.match(source, /Do not paraphrase, summarize, or add commentary before or after it/i);
+  assert.match(source, /recommend background since paper reviews are typically long-running/i);
+  assert.match(source, /\(Recommended\)/);
+  assert.doesNotMatch(source, /Bash\(git:/);
+  assert.match(source, /--panel/);
+  assert.match(source, /--venue/);
+  assert.match(source, /--reflect/);
+  assert.match(source, /Empiricist.*Theorist.*Practitioner/i);
+  assert.match(source, /neurips.*icml.*iclr.*acl.*nature.*workshop/i);
+});
+
 test("continue is not exposed as a user-facing command", () => {
   const commandFiles = fs.readdirSync(path.join(PLUGIN_ROOT, "commands")).sort();
   assert.deepEqual(commandFiles, [
     "adversarial-review.md",
     "cancel.md",
+    "paper-review.md",
     "rescue.md",
     "result.md",
     "review.md",
