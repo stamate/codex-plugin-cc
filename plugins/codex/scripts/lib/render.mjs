@@ -285,6 +285,288 @@ export function renderReviewResult(parsedResult, meta) {
   return `${lines.join("\n").trimEnd()}\n`;
 }
 
+function paperSeverityRank(severity) {
+  switch (severity) {
+    case "critical":
+      return 0;
+    case "major":
+      return 1;
+    case "minor":
+      return 2;
+    default:
+      return 3;
+  }
+}
+
+function validatePaperReviewResultShape(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return "Expected a top-level JSON object.";
+  }
+  if (typeof data.recommendation !== "string" || !data.recommendation.trim()) {
+    return "Missing string `recommendation`.";
+  }
+  if (typeof data.summary !== "string" || !data.summary.trim()) {
+    return "Missing string `summary`.";
+  }
+  if (!Array.isArray(data.strengths)) {
+    return "Missing array `strengths`.";
+  }
+  if (!Array.isArray(data.weaknesses)) {
+    return "Missing array `weaknesses`.";
+  }
+  if (!Array.isArray(data.findings)) {
+    return "Missing array `findings`.";
+  }
+  if (!Array.isArray(data.questions_for_authors)) {
+    return "Missing array `questions_for_authors`.";
+  }
+  if (typeof data.overall_assessment !== "string" || !data.overall_assessment.trim()) {
+    return "Missing string `overall_assessment`.";
+  }
+  return null;
+}
+
+function normalizePaperReviewFinding(finding, index) {
+  const source = finding && typeof finding === "object" && !Array.isArray(finding) ? finding : {};
+  return {
+    category: typeof source.category === "string" && source.category.trim() ? source.category.trim() : "methodology",
+    severity: typeof source.severity === "string" && source.severity.trim() ? source.severity.trim() : "minor",
+    title: typeof source.title === "string" && source.title.trim() ? source.title.trim() : `Finding ${index + 1}`,
+    body: typeof source.body === "string" && source.body.trim() ? source.body.trim() : "No details provided.",
+    section: typeof source.section === "string" && source.section.trim() ? source.section.trim() : "unknown",
+    recommendation: typeof source.recommendation === "string" ? source.recommendation.trim() : ""
+  };
+}
+
+export function renderPaperReviewResult(parsedResult, meta) {
+  if (!parsedResult.parsed) {
+    const lines = [
+      `# Codex ${meta.reviewLabel}`,
+      "",
+      "Codex did not return valid structured JSON.",
+      "",
+      `- Parse error: ${parsedResult.parseError}`
+    ];
+
+    if (parsedResult.rawOutput) {
+      lines.push("", "Raw final message:", "", "```text", parsedResult.rawOutput, "```");
+    }
+
+    appendReasoningSection(lines, meta.reasoningSummary ?? parsedResult.reasoningSummary);
+
+    return `${lines.join("\n").trimEnd()}\n`;
+  }
+
+  const validationError = validatePaperReviewResultShape(parsedResult.parsed);
+  if (validationError) {
+    const lines = [
+      `# Codex ${meta.reviewLabel}`,
+      "",
+      `Paper: ${meta.targetLabel}`,
+      "Codex returned JSON with an unexpected review shape.",
+      "",
+      `- Validation error: ${validationError}`
+    ];
+
+    if (parsedResult.rawOutput) {
+      lines.push("", "Raw final message:", "", "```text", parsedResult.rawOutput, "```");
+    }
+
+    appendReasoningSection(lines, meta.reasoningSummary ?? parsedResult.reasoningSummary);
+
+    return `${lines.join("\n").trimEnd()}\n`;
+  }
+
+  const data = parsedResult.parsed;
+  const findings = data.findings
+    .map((finding, index) => normalizePaperReviewFinding(finding, index))
+    .sort((left, right) => paperSeverityRank(left.severity) - paperSeverityRank(right.severity));
+
+  const lines = [
+    `# Codex ${meta.reviewLabel}`,
+    "",
+    `Paper: ${meta.targetLabel}`,
+    `Recommendation: ${data.recommendation}`,
+    "",
+    data.summary.trim(),
+    ""
+  ];
+
+  if (data.strengths.length > 0) {
+    lines.push("## Strengths");
+    for (const strength of data.strengths) {
+      if (typeof strength === "string" && strength.trim()) {
+        lines.push(`- ${strength.trim()}`);
+      }
+    }
+    lines.push("");
+  }
+
+  if (data.weaknesses.length > 0) {
+    lines.push("## Weaknesses");
+    for (const weakness of data.weaknesses) {
+      if (typeof weakness === "string" && weakness.trim()) {
+        lines.push(`- ${weakness.trim()}`);
+      }
+    }
+    lines.push("");
+  }
+
+  if (findings.length === 0) {
+    lines.push("No material findings.");
+  } else {
+    lines.push("## Findings");
+    for (const finding of findings) {
+      lines.push(`- [${finding.severity}] [${finding.category}] ${finding.title} (Section: ${finding.section})`);
+      lines.push(`  ${finding.body}`);
+      if (finding.recommendation) {
+        lines.push(`  Recommendation: ${finding.recommendation}`);
+      }
+    }
+  }
+
+  if (data.questions_for_authors.length > 0) {
+    lines.push("", "## Questions for Authors");
+    for (const question of data.questions_for_authors) {
+      if (typeof question === "string" && question.trim()) {
+        lines.push(`- ${question.trim()}`);
+      }
+    }
+  }
+
+  lines.push("", "## Overall Assessment", "", data.overall_assessment.trim());
+
+  appendReasoningSection(lines, meta.reasoningSummary);
+
+  return `${lines.join("\n").trimEnd()}\n`;
+}
+
+export function renderPanelReviewResult(panelResult, meta) {
+  const { individualReviews, metaReview, weightedScores } = panelResult;
+  const validIndividual = individualReviews.filter((r) => r.parsed != null);
+
+  if (validIndividual.length === 0 && !metaReview) {
+    return `# Codex ${meta.reviewLabel}\n\nNo valid reviews were returned by the panel.\n`;
+  }
+
+  const recommendation = metaReview?.recommendation ?? validIndividual[0]?.parsed?.recommendation ?? "unknown";
+  const lines = [
+    `# Codex ${meta.reviewLabel}`,
+    "",
+    `Paper: ${meta.targetLabel}`,
+    `Recommendation: ${recommendation}`
+  ];
+
+  if (meta.venueLabel) {
+    lines.push(`Venue calibration: ${meta.venueLabel}`);
+  }
+
+  lines.push(`Panel: ${validIndividual.length} reviewers + Area Chair`, "");
+
+  if (validIndividual.length > 0) {
+    const dimensions = ["originality", "methodology", "clarity", "significance", "soundness", "overall", "confidence"];
+    const headers = ["Dimension", ...validIndividual.map((r) => r.persona.label.replace("The ", ""))];
+    if (weightedScores) {
+      headers.push("Weighted Avg");
+    }
+
+    lines.push("## Score Summary");
+    lines.push(`| ${headers.join(" | ")} |`);
+    lines.push(`| ${headers.map(() => "---").join(" | ")} |`);
+
+    for (const dim of dimensions) {
+      const row = [dim];
+      for (const review of validIndividual) {
+        row.push(String(review.parsed.scores?.[dim] ?? "-"));
+      }
+      if (weightedScores && dim !== "confidence") {
+        row.push(String(weightedScores[dim] ?? "-"));
+      } else if (dim === "confidence") {
+        row.push("-");
+      }
+      lines.push(`| ${row.join(" | ")} |`);
+    }
+    lines.push("");
+  }
+
+  if (metaReview) {
+    if (metaReview.summary) {
+      lines.push(metaReview.summary.trim(), "");
+    }
+
+    if (metaReview.consensus_points?.length > 0) {
+      lines.push("## Consensus");
+      for (const point of metaReview.consensus_points) {
+        lines.push(`- ${point}`);
+      }
+      lines.push("");
+    }
+
+    if (metaReview.disagreements?.length > 0) {
+      lines.push("## Disagreements");
+      for (const point of metaReview.disagreements) {
+        lines.push(`- ${point}`);
+      }
+      lines.push("");
+    }
+
+    if (metaReview.priority_actions?.length > 0) {
+      lines.push("## Priority Actions");
+      for (let i = 0; i < metaReview.priority_actions.length; i++) {
+        lines.push(`${i + 1}. ${metaReview.priority_actions[i]}`);
+      }
+      lines.push("");
+    }
+  }
+
+  if (validIndividual.length > 0) {
+    lines.push("## Individual Reviews");
+    for (const review of validIndividual) {
+      const r = review.parsed;
+      lines.push("");
+      lines.push(`### ${r.persona || review.persona.label}`);
+      lines.push(`Recommendation: ${r.recommendation}`);
+      lines.push("");
+      if (r.summary) {
+        lines.push(r.summary.trim(), "");
+      }
+      if (r.strengths?.length > 0) {
+        lines.push("**Strengths:**");
+        for (const s of r.strengths) {
+          if (typeof s === "string" && s.trim()) lines.push(`- ${s.trim()}`);
+        }
+        lines.push("");
+      }
+      if (r.weaknesses?.length > 0) {
+        lines.push("**Weaknesses:**");
+        for (const w of r.weaknesses) {
+          if (typeof w === "string" && w.trim()) lines.push(`- ${w.trim()}`);
+        }
+        lines.push("");
+      }
+      if (r.findings?.length > 0) {
+        lines.push("**Findings:**");
+        for (const f of r.findings) {
+          const finding = normalizePaperReviewFinding(f, 0);
+          lines.push(`- [${finding.severity}] [${finding.category}] ${finding.title} (Section: ${finding.section})`);
+          lines.push(`  ${finding.body}`);
+          if (finding.recommendation) {
+            lines.push(`  Recommendation: ${finding.recommendation}`);
+          }
+        }
+        lines.push("");
+      }
+    }
+  }
+
+  if (metaReview?.overall_assessment) {
+    lines.push("## Area Chair Meta-Review", "");
+    lines.push(metaReview.overall_assessment.trim());
+  }
+
+  return `${lines.join("\n").trimEnd()}\n`;
+}
+
 export function renderNativeReviewResult(result, meta) {
   const stdout = result.stdout.trim();
   const stderr = result.stderr.trim();
