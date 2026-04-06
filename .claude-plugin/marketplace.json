@@ -1,7 +1,7 @@
 {
-  "name": "openai-codex",
+  "name": "stamate-codex",
   "owner": {
-    "name": "OpenAI"
+    "name": "stamate"
   },
   "metadata": {
     "description": "Codex plugins to use in Claude Code for delegation and code review.",
@@ -13,7 +13,7 @@
       "description": "Use Codex from Claude Code to review code or delegate tasks.",
       "version": "1.0.2",
       "author": {
-        "name": "OpenAI"
+        "name": "stamate"
       },
       "source": "./plugins/codex"
     }

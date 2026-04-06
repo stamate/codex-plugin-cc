@@ -1,5 +1,5 @@
 {
-  "name": "@openai/codex-plugin-cc",
+  "name": "codex-plugin-cc",
   "version": "1.0.2",
   "private": true,
   "type": "module",
