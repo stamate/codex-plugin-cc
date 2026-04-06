@@ -886,6 +886,52 @@ export function renderGrantPanelReviewResult(panelResult, meta) {
   return `${lines.join("\n").trimEnd()}\n`;
 }
 
+export function renderCodeAlignmentResult(alignmentResult) {
+  if (!alignmentResult || !alignmentResult.parsed) {
+    if (alignmentResult?.rawOutput) {
+      return `## Code-Methods Alignment\n\nCould not parse alignment results.\n\n\`\`\`text\n${alignmentResult.rawOutput}\n\`\`\`\n`;
+    }
+    return "## Code-Methods Alignment\n\nCode alignment review did not return results.\n";
+  }
+
+  const data = alignmentResult.parsed;
+  const lines = [
+    "## Code-Methods Alignment",
+    "",
+    `Verdict: ${data.alignment_verdict || "unknown"}`,
+    ""
+  ];
+
+  if (data.summary) {
+    lines.push(data.summary.trim(), "");
+  }
+
+  if (data.alignment_findings?.length > 0) {
+    lines.push("### Alignment Findings");
+    for (const finding of data.alignment_findings) {
+      lines.push(`- [${finding.severity || "info"}] [${finding.category || "method-mismatch"}] ${finding.title || "Finding"}`);
+      if (finding.paper_claim) {
+        lines.push(`  Paper claims: ${finding.paper_claim}`);
+      }
+      if (finding.code_evidence) {
+        lines.push(`  Code shows: ${finding.code_evidence}`);
+      }
+      if (finding.recommendation) {
+        lines.push(`  Recommendation: ${finding.recommendation}`);
+      }
+    }
+    lines.push("");
+  } else {
+    lines.push("No alignment discrepancies found.", "");
+  }
+
+  if (data.reproducibility_assessment) {
+    lines.push("### Reproducibility Assessment", "", data.reproducibility_assessment.trim());
+  }
+
+  return `${lines.join("\n").trimEnd()}\n`;
+}
+
 export function renderNativeReviewResult(result, meta) {
   const stdout = result.stdout.trim();
   const stderr = result.stderr.trim();

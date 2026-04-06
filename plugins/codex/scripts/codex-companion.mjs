@@ -52,6 +52,7 @@ import {
 } from "./lib/tracked-jobs.mjs";
 import { resolveWorkspaceRoot } from "./lib/workspace.mjs";
 import {
+  renderCodeAlignmentResult,
   renderNativeReviewResult,
   renderPaperReviewResult,
   renderPanelReviewResult,
@@ -80,6 +81,7 @@ const META_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "meta-review-output.sc
 const GRANT_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "grant-review-output.schema.json");
 const GRANT_PANEL_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "grant-panel-review-output.schema.json");
 const GRANT_META_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "grant-meta-review-output.schema.json");
+const CODE_ALIGNMENT_SCHEMA = path.join(ROOT_DIR, "schemas", "code-alignment-output.schema.json");
 const DEFAULT_STATUS_WAIT_TIMEOUT_MS = 240000;
 const DEFAULT_STATUS_POLL_INTERVAL_MS = 2000;
 const VALID_REASONING_EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh"]);
@@ -602,6 +604,45 @@ async function executeGrantReviewRun(request) {
   };
 }
 
+async function executeCodeAlignmentRun(request) {
+  ensureCodexReady(request.cwd);
+
+  const template = loadPromptTemplate(ROOT_DIR, "code-methods-alignment");
+  const prompt = interpolateTemplate(template, {
+    PAPER_TITLE: request.documentTitle || "Untitled",
+    METHODS_SUMMARY: request.methodsSummary || request.documentContent,
+    REVIEWER_FOCUS: request.focusText || "Check all alignment categories."
+  });
+  const codePath = path.resolve(request.cwd, request.codePath);
+  const result = await runAppServerTurn(codePath, {
+    prompt,
+    model: request.model,
+    effort: request.effort,
+    sandbox: "read-only",
+    outputSchema: readOutputSchema(CODE_ALIGNMENT_SCHEMA),
+    onProgress: request.onProgress
+  });
+
+  let parsed = null;
+  try {
+    const { extractJsonFromThoughtResponse } = await import("./lib/panel-review.mjs");
+    parsed = extractJsonFromThoughtResponse(typeof result.finalMessage === "string" ? result.finalMessage : "");
+  } catch {
+    const fallback = parseStructuredOutput(result.finalMessage, {
+      status: result.status,
+      failureMessage: result.error?.message ?? result.stderr
+    });
+    parsed = fallback.parsed;
+  }
+
+  return {
+    exitStatus: result.status,
+    parsed,
+    rawOutput: typeof result.finalMessage === "string" ? result.finalMessage : "",
+    threadId: result.threadId
+  };
+}
+
 async function executeTaskRun(request) {
   const workspaceRoot = resolveWorkspaceRoot(request.cwd);
   ensureCodexReady(request.cwd);
@@ -890,7 +931,7 @@ async function handleReview(argv) {
 
 async function handlePaperReview(argv) {
   const { options, positionals } = parseCommandInput(argv, {
-    valueOptions: ["model", "effort", "cwd", "title", "venue", "reviewers", "docs"],
+    valueOptions: ["model", "effort", "cwd", "title", "venue", "reviewers", "docs", "code"],
     booleanOptions: ["json", "background", "wait", "panel", "reflect"],
     aliasMap: {
       m: "model"
@@ -952,11 +993,26 @@ async function handlePaperReview(argv) {
           }
         );
 
-        const rendered = renderPanelReviewResult(panelResult, {
+        let rendered = renderPanelReviewResult(panelResult, {
           reviewLabel: "Paper Review Panel",
           targetLabel: paperTitle || "academic paper",
           venueLabel: venueCalibration?.name ?? null
         });
+
+        if (options.code) {
+          const alignmentResult = await executeCodeAlignmentRun({
+            cwd,
+            codePath: options.code,
+            documentContent: paperContent,
+            documentTitle: paperTitle,
+            focusText,
+            model,
+            effort,
+            onProgress: progress
+          });
+          rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
+          panelResult.codeAlignment = alignmentResult;
+        }
 
         return {
           exitStatus: panelResult.exitStatus,
@@ -985,8 +1041,8 @@ async function handlePaperReview(argv) {
 
   await runForegroundCommand(
     job,
-    (progress) =>
-      executePaperReviewRun({
+    async (progress) => {
+      const reviewResult = await executePaperReviewRun({
         cwd,
         model,
         effort,
@@ -995,14 +1051,32 @@ async function handlePaperReview(argv) {
         focusText,
         supplementaryDocs,
         onProgress: progress
-      }),
+      });
+
+      if (options.code) {
+        const alignmentResult = await executeCodeAlignmentRun({
+          cwd,
+          codePath: options.code,
+          documentContent: paperContent,
+          documentTitle: paperTitle,
+          focusText,
+          model,
+          effort,
+          onProgress: progress
+        });
+        reviewResult.rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
+        reviewResult.payload.codeAlignment = alignmentResult;
+      }
+
+      return reviewResult;
+    },
     { json: options.json }
   );
 }
 
 async function handleGrantReview(argv) {
   const { options, positionals } = parseCommandInput(argv, {
-    valueOptions: ["model", "effort", "cwd", "title", "agency", "reviewers", "docs"],
+    valueOptions: ["model", "effort", "cwd", "title", "agency", "reviewers", "docs", "code"],
     booleanOptions: ["json", "background", "wait", "panel", "reflect"],
     aliasMap: {
       m: "model"
@@ -1065,11 +1139,26 @@ async function handleGrantReview(argv) {
           }
         );
 
-        const rendered = renderGrantPanelReviewResult(panelResult, {
+        let rendered = renderGrantPanelReviewResult(panelResult, {
           reviewLabel: "Grant Review Panel",
           targetLabel: proposalTitle || "research proposal",
           agencyLabel: agencyCalibration?.name ?? null
         });
+
+        if (options.code) {
+          const alignmentResult = await executeCodeAlignmentRun({
+            cwd,
+            codePath: options.code,
+            documentContent: proposalContent,
+            documentTitle: proposalTitle,
+            focusText,
+            model,
+            effort,
+            onProgress: progress
+          });
+          rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
+          panelResult.codeAlignment = alignmentResult;
+        }
 
         return {
           exitStatus: panelResult.exitStatus,
@@ -1098,8 +1187,8 @@ async function handleGrantReview(argv) {
 
   await runForegroundCommand(
     job,
-    (progress) =>
-      executeGrantReviewRun({
+    async (progress) => {
+      const reviewResult = await executeGrantReviewRun({
         cwd,
         model,
         effort,
@@ -1109,7 +1198,25 @@ async function handleGrantReview(argv) {
         supplementaryDocs,
         agencyCalibration: options.agency ? getAgencyCalibration(options.agency) : null,
         onProgress: progress
-      }),
+      });
+
+      if (options.code) {
+        const alignmentResult = await executeCodeAlignmentRun({
+          cwd,
+          codePath: options.code,
+          documentContent: proposalContent,
+          documentTitle: proposalTitle,
+          focusText,
+          model,
+          effort,
+          onProgress: progress
+        });
+        reviewResult.rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
+        reviewResult.payload.codeAlignment = alignmentResult;
+      }
+
+      return reviewResult;
+    },
     { json: options.json }
   );
 }

@@ -1,6 +1,6 @@
 ---
 description: Run a Codex peer review of a research grant proposal
-argument-hint: '<file> [--panel] [--agency <horizon|erc|ukri|dfg|anr|snsf|nwo|nih|nsf|doe|darpa>] [--docs <folder>] [--reflect] [--wait|--background] [--model <model>] [--effort <effort>] [--title <title>] [focus ...]'
+argument-hint: '<file> [--panel] [--agency <horizon|erc|ukri|dfg|anr|snsf|nwo|nih|nsf|doe|darpa>] [--docs <folder>] [--code <path>] [--reflect] [--wait|--background] [--model <model>] [--effort <effort>] [--title <title>] [focus ...]'
 disable-model-invocation: true
 allowed-tools: Read, Bash(node:*), AskUserQuestion
 ---
@@ -47,6 +47,13 @@ PROPOSAL_EOF
 ```
 - The companion script splits on `\n---SUPPLEMENTARY_DOCS---\n` to separate the proposal from the supplementary documents.
 - If `--docs` is absent, pipe only the proposal text with no separator.
+
+Code-methods alignment:
+- If `--code <path>` is present, an additional review stage runs after the main review (single or panel).
+- Codex reads the code at the specified path and cross-validates it against the proposal's methods and preliminary data.
+- Checks for: hyperparameter mismatches, undocumented preprocessing steps, data leakage, and statistical implementation errors.
+- The alignment results are appended to the review output as a "Code-Methods Alignment" section.
+- Pass `--code <path>` through to the companion script unchanged.
 
 Execution mode rules:
 - If `--panel` is present, always recommend background regardless of proposal size.
