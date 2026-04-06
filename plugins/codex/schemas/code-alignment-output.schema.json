@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["alignment_verdict", "summary", "alignment_findings", "reproducibility_assessment"],
+  "properties": {
+    "alignment_verdict": {
+      "type": "string",
+      "enum": ["aligned", "minor-discrepancies", "major-discrepancies", "cannot-verify"]
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "alignment_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["category", "severity", "title", "paper_claim", "code_evidence", "recommendation"],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": ["hyperparameter-mismatch", "method-mismatch", "undocumented-step", "data-leakage", "statistical-implementation", "preprocessing", "evaluation-protocol", "missing-code"]
+          },
+          "severity": { "type": "string", "enum": ["critical", "major", "minor", "info"] },
+          "title": { "type": "string", "minLength": 1 },
+          "paper_claim": { "type": "string", "minLength": 1 },
+          "code_evidence": { "type": "string", "minLength": 1 },
+          "recommendation": { "type": "string" }
+        }
+      }
+    },
+    "reproducibility_assessment": { "type": "string", "minLength": 1 }
+  }
+}
