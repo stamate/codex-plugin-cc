@@ -20,13 +20,16 @@ export const PERSONAS = [
   }
 ];
 
-export function buildPersonaPrompt({ templateRootDir, persona, paperContent, paperTitle, focusText, venueCalibration }) {
+export function buildPersonaPrompt({ templateRootDir, persona, paperContent, paperTitle, focusText, venueCalibration, supplementaryDocs }) {
   const template = loadPromptTemplate(templateRootDir, persona.templateName);
   return interpolateTemplate(template, {
     PAPER_TITLE: paperTitle || "Untitled",
     REVIEWER_FOCUS: focusText || "No specific focus provided. Review all dimensions.",
     VENUE_CALIBRATION: venueCalibration || "",
-    PAPER_CONTENT: paperContent
+    AGENCY_CALIBRATION: venueCalibration || "",
+    SUPPLEMENTARY_DOCS: supplementaryDocs || "",
+    PAPER_CONTENT: paperContent,
+    PROPOSAL_CONTENT: paperContent
   });
 }
 
@@ -145,7 +148,8 @@ export async function executePanelReviewRun(request, dependencies) {
       paperContent: request.paperContent,
       paperTitle: request.paperTitle,
       focusText: request.focusText,
-      venueCalibration
+      venueCalibration,
+      supplementaryDocs: request.supplementaryDocs ?? ""
     });
     return runAppServerTurn(workspaceRoot, {
       prompt,

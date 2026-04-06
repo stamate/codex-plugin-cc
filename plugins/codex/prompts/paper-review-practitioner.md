@@ -90,6 +90,10 @@ Do not invent results, methods, or claims that are not present in the paper.
 If a conclusion depends on an inference, state that explicitly and keep the confidence honest.
 </grounding_rules>
 
+<supplementary_documents>
+{{SUPPLEMENTARY_DOCS}}
+</supplementary_documents>
+
 <paper_content>
 {{PAPER_CONTENT}}
 </paper_content>

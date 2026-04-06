@@ -63,6 +63,10 @@ Do not dilute serious issues with filler.
 If the paper is strong, say so directly and focus findings on genuine improvements.
 </calibration_rules>
 
+<supplementary_documents>
+{{SUPPLEMENTARY_DOCS}}
+</supplementary_documents>
+
 <paper_content>
 {{PAPER_CONTENT}}
 </paper_content>

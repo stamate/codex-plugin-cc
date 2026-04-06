@@ -1,6 +1,6 @@
 ---
 description: Run a Codex peer review of a research grant proposal
-argument-hint: '<file> [--panel] [--agency <horizon|erc|ukri|dfg|anr|snsf|nwo|nih|nsf|doe|darpa>] [--reflect] [--wait|--background] [--model <model>] [--effort <effort>] [--title <title>] [focus ...]'
+argument-hint: '<file> [--panel] [--agency <horizon|erc|ukri|dfg|anr|snsf|nwo|nih|nsf|doe|darpa>] [--docs <folder>] [--reflect] [--wait|--background] [--model <model>] [--effort <effort>] [--title <title>] [focus ...]'
 disable-model-invocation: true
 allowed-tools: Read, Bash(node:*), AskUserQuestion
 ---
@@ -29,6 +29,24 @@ Panel review mode:
 - `--reflect` adds a self-reflection round where each reviewer refines their initial assessment.
 - Panel mode takes significantly longer than single review. Always recommend background.
 - Pass all panel flags through to the companion script.
+
+Supplementary documents:
+- If `--docs <folder>` is present, read all files in the specified folder using the `Read` tool.
+- Format each file's content with a header line `### File: <filename>` followed by the file text.
+- Append all docs content to stdin after a separator line, using this format:
+```bash
+cat <<'PROPOSAL_EOF' | node "${CLAUDE_PLUGIN_ROOT}/scripts/codex-companion.mjs" grant-review --title "Grant Title" [other flags] [focus text]
+<extracted proposal text>
+---SUPPLEMENTARY_DOCS---
+### File: doc1.pdf
+<content of doc1>
+
+### File: doc2.txt
+<content of doc2>
+PROPOSAL_EOF
+```
+- The companion script splits on `\n---SUPPLEMENTARY_DOCS---\n` to separate the proposal from the supplementary documents.
+- If `--docs` is absent, pipe only the proposal text with no separator.
 
 Execution mode rules:
 - If `--panel` is present, always recommend background regardless of proposal size.

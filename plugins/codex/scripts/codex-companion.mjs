@@ -269,22 +269,38 @@ function buildAdversarialReviewPrompt(context, focusText) {
   });
 }
 
-function buildPaperReviewPrompt(paperContent, focusText, paperTitle) {
+function parseStdinContent(rawStdin) {
+  if (!rawStdin) {
+    return { documentContent: "", supplementaryDocs: "" };
+  }
+  const separator = "\n---SUPPLEMENTARY_DOCS---\n";
+  const separatorIndex = rawStdin.indexOf(separator);
+  if (separatorIndex === -1) {
+    return { documentContent: rawStdin, supplementaryDocs: "" };
+  }
+  return {
+    documentContent: rawStdin.slice(0, separatorIndex),
+    supplementaryDocs: rawStdin.slice(separatorIndex + separator.length)
+  };
+}
+
+function buildPaperReviewPrompt(paperContent, focusText, paperTitle, supplementaryDocs) {
   const template = loadPromptTemplate(ROOT_DIR, "paper-review");
   return interpolateTemplate(template, {
     PAPER_TITLE: paperTitle || "Untitled",
     REVIEWER_FOCUS: focusText || "No specific focus provided. Review all dimensions.",
+    SUPPLEMENTARY_DOCS: supplementaryDocs || "",
     PAPER_CONTENT: paperContent
   });
 }
 
-function buildGrantReviewPrompt(proposalContent, focusText, proposalTitle, agencyCalibration) {
+function buildGrantReviewPrompt(proposalContent, focusText, proposalTitle, agencyCalibration, supplementaryDocs) {
   const template = loadPromptTemplate(ROOT_DIR, "grant-review");
   return interpolateTemplate(template, {
     PROPOSAL_TITLE: proposalTitle || "Untitled",
     REVIEWER_FOCUS: focusText || "No specific focus provided. Review all dimensions.",
     AGENCY_CALIBRATION: agencyCalibration || "",
-    SUPPLEMENTARY_DOCS: "",
+    SUPPLEMENTARY_DOCS: supplementaryDocs || "",
     PROPOSAL_CONTENT: proposalContent
   });
 }
@@ -477,7 +493,8 @@ async function executePaperReviewRun(request) {
   const prompt = buildPaperReviewPrompt(
     request.paperContent,
     request.focusText,
-    request.paperTitle
+    request.paperTitle,
+    request.supplementaryDocs
   );
   const workspaceRoot = resolveWorkspaceRoot(request.cwd);
   const result = await runAppServerTurn(workspaceRoot, {
@@ -534,7 +551,8 @@ async function executeGrantReviewRun(request) {
     request.proposalContent,
     request.focusText,
     request.proposalTitle,
-    request.agencyCalibration?.promptSection ?? ""
+    request.agencyCalibration?.promptSection ?? "",
+    request.supplementaryDocs
   );
   const workspaceRoot = resolveWorkspaceRoot(request.cwd);
   const result = await runAppServerTurn(workspaceRoot, {
@@ -872,7 +890,7 @@ async function handleReview(argv) {
 
 async function handlePaperReview(argv) {
   const { options, positionals } = parseCommandInput(argv, {
-    valueOptions: ["model", "effort", "cwd", "title", "venue", "reviewers"],
+    valueOptions: ["model", "effort", "cwd", "title", "venue", "reviewers", "docs"],
     booleanOptions: ["json", "background", "wait", "panel", "reflect"],
     aliasMap: {
       m: "model"
@@ -884,12 +902,13 @@ async function handlePaperReview(argv) {
   const model = normalizeRequestedModel(options.model);
   const effort = normalizeReasoningEffort(options.effort);
   const focusText = positionals.join(" ").trim();
-  const paperContent = readStdinIfPiped();
+  const rawStdin = readStdinIfPiped();
 
-  if (!paperContent) {
+  if (!rawStdin) {
     throw new Error("No paper content provided. Pipe the paper text to this command via stdin.");
   }
 
+  const { documentContent: paperContent, supplementaryDocs } = parseStdinContent(rawStdin);
   const paperTitle = options.title || "";
 
   if (options.panel) {
@@ -919,6 +938,7 @@ async function handlePaperReview(argv) {
             paperTitle,
             focusText,
             venueCalibration,
+            supplementaryDocs,
             templateRootDir: ROOT_DIR,
             panelSchemaPath: PANEL_REVIEW_SCHEMA,
             metaSchemaPath: META_REVIEW_SCHEMA,
@@ -973,6 +993,7 @@ async function handlePaperReview(argv) {
         paperContent,
         paperTitle,
         focusText,
+        supplementaryDocs,
         onProgress: progress
       }),
     { json: options.json }
@@ -981,7 +1002,7 @@ async function handlePaperReview(argv) {
 
 async function handleGrantReview(argv) {
   const { options, positionals } = parseCommandInput(argv, {
-    valueOptions: ["model", "effort", "cwd", "title", "agency", "reviewers"],
+    valueOptions: ["model", "effort", "cwd", "title", "agency", "reviewers", "docs"],
     booleanOptions: ["json", "background", "wait", "panel", "reflect"],
     aliasMap: {
       m: "model"
@@ -993,12 +1014,13 @@ async function handleGrantReview(argv) {
   const model = normalizeRequestedModel(options.model);
   const effort = normalizeReasoningEffort(options.effort);
   const focusText = positionals.join(" ").trim();
-  const proposalContent = readStdinIfPiped();
+  const rawStdin = readStdinIfPiped();
 
-  if (!proposalContent) {
+  if (!rawStdin) {
     throw new Error("No proposal content provided. Pipe the proposal text to this command via stdin.");
   }
 
+  const { documentContent: proposalContent, supplementaryDocs } = parseStdinContent(rawStdin);
   const proposalTitle = options.title || "";
 
   if (options.panel) {
@@ -1028,6 +1050,7 @@ async function handleGrantReview(argv) {
             paperTitle: proposalTitle,
             focusText,
             venueCalibration: agencyCalibration,
+            supplementaryDocs,
             templateRootDir: ROOT_DIR,
             panelSchemaPath: GRANT_PANEL_REVIEW_SCHEMA,
             metaSchemaPath: GRANT_META_REVIEW_SCHEMA,
@@ -1083,6 +1106,7 @@ async function handleGrantReview(argv) {
         proposalContent,
         proposalTitle,
         focusText,
+        supplementaryDocs,
         agencyCalibration: options.agency ? getAgencyCalibration(options.agency) : null,
         onProgress: progress
       }),
