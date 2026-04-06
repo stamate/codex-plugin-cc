@@ -55,6 +55,8 @@ import {
   renderNativeReviewResult,
   renderPaperReviewResult,
   renderPanelReviewResult,
+  renderGrantReviewResult,
+  renderGrantPanelReviewResult,
   renderReviewResult,
   renderStoredJobResult,
   renderCancelReport,
@@ -68,17 +70,27 @@ import {
   executePanelReviewRun as runPanelReview
 } from "./lib/panel-review.mjs";
 import { getVenueCalibration } from "./lib/venue-calibration.mjs";
+import { getAgencyCalibration } from "./lib/agency-calibration.mjs";
 
 const ROOT_DIR = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "review-output.schema.json");
 const PAPER_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "paper-review-output.schema.json");
 const PANEL_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "panel-review-output.schema.json");
 const META_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "meta-review-output.schema.json");
+const GRANT_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "grant-review-output.schema.json");
+const GRANT_PANEL_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "grant-panel-review-output.schema.json");
+const GRANT_META_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "grant-meta-review-output.schema.json");
 const DEFAULT_STATUS_WAIT_TIMEOUT_MS = 240000;
 const DEFAULT_STATUS_POLL_INTERVAL_MS = 2000;
 const VALID_REASONING_EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh"]);
 const MODEL_ALIASES = new Map([["spark", "gpt-5.3-codex-spark"]]);
 const STOP_REVIEW_TASK_MARKER = "Run a stop-gate review of the previous Claude turn.";
+
+const GRANT_PERSONAS = [
+  { id: "scientific", label: "The Scientific Reviewer", templateName: "grant-review-scientific" },
+  { id: "program-officer", label: "The Program Officer", templateName: "grant-review-program-officer" },
+  { id: "feasibility", label: "The Feasibility Assessor", templateName: "grant-review-feasibility" }
+];
 
 function printUsage() {
   console.log(
@@ -86,6 +98,7 @@ function printUsage() {
       "Usage:",
       "  node scripts/codex-companion.mjs setup [--enable-review-gate|--disable-review-gate] [--json]",
       "  node scripts/codex-companion.mjs paper-review [--panel] [--venue <venue>] [--reflect] [--model <model>] [--effort <effort>] [--title <title>] [focus text]  (reads paper from stdin)",
+      "  node scripts/codex-companion.mjs grant-review [--panel] [--agency <agency>] [--reflect] [--model <model>] [--effort <effort>] [--title <title>] [focus text]  (reads proposal from stdin)",
       "  node scripts/codex-companion.mjs review [--wait|--background] [--base <ref>] [--scope <auto|working-tree|branch>]",
       "  node scripts/codex-companion.mjs adversarial-review [--wait|--background] [--base <ref>] [--scope <auto|working-tree|branch>] [focus text]",
       "  node scripts/codex-companion.mjs task [--background] [--write] [--resume-last|--resume|--fresh] [--model <model|spark>] [--effort <none|minimal|low|medium|high|xhigh>] [prompt]",
@@ -262,6 +275,17 @@ function buildPaperReviewPrompt(paperContent, focusText, paperTitle) {
     PAPER_TITLE: paperTitle || "Untitled",
     REVIEWER_FOCUS: focusText || "No specific focus provided. Review all dimensions.",
     PAPER_CONTENT: paperContent
+  });
+}
+
+function buildGrantReviewPrompt(proposalContent, focusText, proposalTitle, agencyCalibration) {
+  const template = loadPromptTemplate(ROOT_DIR, "grant-review");
+  return interpolateTemplate(template, {
+    PROPOSAL_TITLE: proposalTitle || "Untitled",
+    REVIEWER_FOCUS: focusText || "No specific focus provided. Review all dimensions.",
+    AGENCY_CALIBRATION: agencyCalibration || "",
+    SUPPLEMENTARY_DOCS: "",
+    PROPOSAL_CONTENT: proposalContent
   });
 }
 
@@ -503,6 +527,63 @@ async function executePaperReviewRun(request) {
   };
 }
 
+async function executeGrantReviewRun(request) {
+  ensureCodexReady(request.cwd);
+
+  const prompt = buildGrantReviewPrompt(
+    request.proposalContent,
+    request.focusText,
+    request.proposalTitle,
+    request.agencyCalibration?.promptSection ?? ""
+  );
+  const workspaceRoot = resolveWorkspaceRoot(request.cwd);
+  const result = await runAppServerTurn(workspaceRoot, {
+    prompt,
+    model: request.model,
+    effort: request.effort,
+    sandbox: "read-only",
+    outputSchema: readOutputSchema(GRANT_REVIEW_SCHEMA),
+    onProgress: request.onProgress
+  });
+  const parsed = parseStructuredOutput(result.finalMessage, {
+    status: result.status,
+    failureMessage: result.error?.message ?? result.stderr
+  });
+  const reviewName = "Grant Review";
+  const targetLabel = request.proposalTitle || "research proposal";
+  const payload = {
+    review: reviewName,
+    proposalTitle: request.proposalTitle,
+    threadId: result.threadId,
+    codex: {
+      status: result.status,
+      stderr: result.stderr,
+      stdout: result.finalMessage,
+      reasoning: result.reasoningSummary
+    },
+    result: parsed.parsed,
+    rawOutput: parsed.rawOutput,
+    parseError: parsed.parseError,
+    reasoningSummary: result.reasoningSummary
+  };
+
+  return {
+    exitStatus: result.status,
+    threadId: result.threadId,
+    turnId: result.turnId,
+    payload,
+    rendered: renderGrantReviewResult(parsed, {
+      reviewLabel: reviewName,
+      targetLabel,
+      reasoningSummary: result.reasoningSummary
+    }),
+    summary: parsed.parsed?.summary ?? parsed.parseError ?? firstMeaningfulLine(result.finalMessage, `${reviewName} finished.`),
+    jobTitle: `Codex ${reviewName}`,
+    jobClass: "review",
+    targetLabel
+  };
+}
+
 async function executeTaskRun(request) {
   const workspaceRoot = resolveWorkspaceRoot(request.cwd);
   ensureCodexReady(request.cwd);
@@ -611,6 +692,12 @@ function getJobKindLabel(kind, jobClass) {
   }
   if (kind === "panel-review") {
     return "panel-review";
+  }
+  if (kind === "grant-review") {
+    return "grant-review";
+  }
+  if (kind === "grant-panel-review") {
+    return "grant-panel-review";
   }
   return jobClass === "review" ? "review" : "rescue";
 }
@@ -886,6 +973,117 @@ async function handlePaperReview(argv) {
         paperContent,
         paperTitle,
         focusText,
+        onProgress: progress
+      }),
+    { json: options.json }
+  );
+}
+
+async function handleGrantReview(argv) {
+  const { options, positionals } = parseCommandInput(argv, {
+    valueOptions: ["model", "effort", "cwd", "title", "agency", "reviewers"],
+    booleanOptions: ["json", "background", "wait", "panel", "reflect"],
+    aliasMap: {
+      m: "model"
+    }
+  });
+
+  const cwd = resolveCommandCwd(options);
+  const workspaceRoot = resolveCommandWorkspace(options);
+  const model = normalizeRequestedModel(options.model);
+  const effort = normalizeReasoningEffort(options.effort);
+  const focusText = positionals.join(" ").trim();
+  const proposalContent = readStdinIfPiped();
+
+  if (!proposalContent) {
+    throw new Error("No proposal content provided. Pipe the proposal text to this command via stdin.");
+  }
+
+  const proposalTitle = options.title || "";
+
+  if (options.panel) {
+    const agencyCalibration = options.agency ? getAgencyCalibration(options.agency) : null;
+    if (options.agency && !agencyCalibration) {
+      throw new Error(`Unknown agency "${options.agency}". Supported: horizon, erc, ukri, dfg, anr, snsf, nwo, nih, nsf, doe, darpa.`);
+    }
+
+    const job = createCompanionJob({
+      prefix: "review",
+      kind: "grant-panel-review",
+      title: "Codex Grant Review Panel",
+      workspaceRoot,
+      jobClass: "review",
+      summary: `Grant Panel Review${proposalTitle ? `: ${shorten(proposalTitle)}` : ""}`
+    });
+
+    await runForegroundCommand(
+      job,
+      async (progress) => {
+        const panelResult = await runPanelReview(
+          {
+            cwd,
+            model,
+            effort,
+            paperContent: proposalContent,
+            paperTitle: proposalTitle,
+            focusText,
+            venueCalibration: agencyCalibration,
+            templateRootDir: ROOT_DIR,
+            panelSchemaPath: GRANT_PANEL_REVIEW_SCHEMA,
+            metaSchemaPath: GRANT_META_REVIEW_SCHEMA,
+            personas: GRANT_PERSONAS,
+            onProgress: progress
+          },
+          {
+            runAppServerTurn,
+            readOutputSchema,
+            parseStructuredOutput,
+            resolveWorkspaceRoot
+          }
+        );
+
+        const rendered = renderGrantPanelReviewResult(panelResult, {
+          reviewLabel: "Grant Review Panel",
+          targetLabel: proposalTitle || "research proposal",
+          agencyLabel: agencyCalibration?.name ?? null
+        });
+
+        return {
+          exitStatus: panelResult.exitStatus,
+          threadId: panelResult.threadId,
+          turnId: panelResult.turnId,
+          payload: panelResult,
+          rendered,
+          summary: panelResult.metaReview?.summary ?? `Grant panel review finished.`,
+          jobTitle: "Codex Grant Review Panel",
+          jobClass: "review"
+        };
+      },
+      { json: options.json }
+    );
+    return;
+  }
+
+  const job = createCompanionJob({
+    prefix: "review",
+    kind: "grant-review",
+    title: "Codex Grant Review",
+    workspaceRoot,
+    jobClass: "review",
+    summary: `Grant Review${proposalTitle ? `: ${shorten(proposalTitle)}` : ""}`
+  });
+
+  await runForegroundCommand(
+    job,
+    (progress) =>
+      executeGrantReviewRun({
+        cwd,
+        model,
+        effort,
+        proposalContent,
+        proposalTitle,
+        focusText,
+        agencyCalibration: options.agency ? getAgencyCalibration(options.agency) : null,
         onProgress: progress
       }),
     { json: options.json }
@@ -1170,6 +1368,9 @@ async function main() {
       break;
     case "paper-review":
       await handlePaperReview(argv);
+      break;
+    case "grant-review":
+      await handleGrantReview(argv);
       break;
     case "task":
       await handleTask(argv);
