@@ -51,8 +51,9 @@ Recommendation semantics:
 - `revise-and-resubmit`: Proposal has significant merit but needs substantial revision; encourage resubmission.
 - `do-not-fund`: Proposal has fundamental flaws in significance, approach, or feasibility that cannot be addressed through revision.
 
-Criterion scores use NIH convention: 1 = Exceptional, 2 = Outstanding, 3 = Excellent, 4 = Very Good, 5 = Good, 6 = Satisfactory, 7 = Fair, 8 = Marginal, 9 = Poor.
-Impact score: 1–9 using the same NIH convention (lower is better).
+All scores use a normalized 1–9 scale regardless of funding agency: 1 = Exceptional, 2 = Outstanding, 3 = Excellent, 4 = Very Good, 5 = Good, 6 = Satisfactory, 7 = Fair, 8 = Marginal, 9 = Poor.
+Impact score: 1–9 using the same scale (lower is better).
+Note: This normalized scale is used for structured comparison even for agencies with different native scoring systems (e.g. Horizon Europe 0-5, ERC A/B/C). The agency calibration section provides context for mapping the agency's actual acceptance bar and criteria to this scale.
 
 Write your reasoning in the THOUGHT section before the JSON.
 Every finding must include the relevant section of the proposal, a confidence score (decimal 0.0–1.0), and a concrete recommendation.

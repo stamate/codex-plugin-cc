@@ -269,7 +269,7 @@ export async function executePanelReviewRun(request, dependencies) {
   const metaReviewFailed = metaParsed == null;
 
   return {
-    exitStatus: metaReviewFailed ? 1 : metaResult.status,
+    exitStatus: (metaReviewFailed || incompletePanel) ? 1 : metaResult.status,
     threadId: metaResult.threadId,
     turnId: metaResult.turnId,
     individualReviews: parsedReviews,
