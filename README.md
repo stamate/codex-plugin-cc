@@ -11,6 +11,7 @@ they already have.
 
 - `/codex:review` for a normal read-only Codex review
 - `/codex:adversarial-review` for a steerable challenge review
+- `/codex:paper-review` for academic paper peer review, with optional multi-persona panel (`--panel`) and venue calibration (`--venue`)
 - `/codex:rescue`, `/codex:status`, `/codex:result`, and `/codex:cancel` to delegate work and manage background jobs
 
 ## Requirements
@@ -162,6 +163,60 @@ Ask Codex to redesign the database connection to be more resilient.
 - if you say `spark`, the plugin maps that to `gpt-5.3-codex-spark`
 - follow-up rescue requests can continue the latest Codex task in the repo
 
+### `/codex:paper-review`
+
+Runs a Codex peer review of an academic paper (PDF, LaTeX, Markdown, or plain text).
+
+Codex evaluates the paper across standard academic dimensions: novelty, methodology, statistical rigor, claims vs. evidence, clarity, related work, limitations, reproducibility, and ethics.
+
+> [!NOTE]
+> Paper reviews can take a while, especially in panel mode. It's generally recommended to run them in the background.
+
+Examples:
+
+```bash
+/codex:paper-review paper.pdf
+/codex:paper-review manuscript.tex --background
+/codex:paper-review draft.md focus on statistical methodology
+```
+
+This command is read-only and will not perform any changes.
+
+#### Panel review mode
+
+Use `--panel` to run a multi-persona review panel with three independent reviewers and an Area Chair synthesis:
+
+- **The Empiricist** — focuses on methodology, statistical rigor, and reproducibility
+- **The Theorist** — focuses on novelty, contribution significance, and theoretical framing
+- **The Practitioner** — focuses on clarity, real-world impact, and ethical considerations
+
+The Area Chair aggregates all three reviews using confidence-weighted scoring, identifies consensus and disagreements, and produces a final recommendation with prioritized action items.
+
+```bash
+/codex:paper-review paper.pdf --panel
+/codex:paper-review paper.pdf --panel --venue neurips
+/codex:paper-review paper.pdf --panel --venue nature focus on statistical methodology
+```
+
+#### Venue calibration
+
+Use `--venue <name>` with `--panel` to calibrate the review to a specific venue's acceptance standards:
+
+| Venue | Acceptance Rate | Focus |
+|-------|----------------|-------|
+| `neurips` | ~25% | Originality, quality, clarity, significance |
+| `icml` | ~25% | Technical rigor, theoretical contributions |
+| `iclr` | ~30% | Representation learning, open review |
+| `acl` | ~20-25% | Linguistic insight, reproducibility |
+| `nature` | ~8% | Broad significance, exceptional novelty |
+| `workshop` | ~50-70% | Interesting ideas, promising directions |
+
+#### Review output
+
+Single-reviewer mode returns a structured review with recommendation (accept / minor-revision / major-revision / reject), strengths, weaknesses, detailed findings, questions for authors, and overall assessment.
+
+Panel mode additionally includes a score comparison table across all reviewers, consensus points, disagreements, priority action items, and the Area Chair's meta-review.
+
 ### `/codex:status`
 
 Shows running and recent Codex jobs for the current repository.
@@ -227,6 +282,20 @@ When the review gate is enabled, the plugin uses a `Stop` hook to run a targeted
 
 ```bash
 /codex:review
+```
+
+### Review An Academic Paper
+
+```bash
+/codex:paper-review paper.pdf
+```
+
+### Multi-Persona Paper Review Panel
+
+```bash
+/codex:paper-review paper.pdf --panel --venue neurips --background
+/codex:status
+/codex:result
 ```
 
 ### Hand A Problem To Codex
