@@ -100,6 +100,7 @@ test("continue is not exposed as a user-facing command", () => {
   assert.deepEqual(commandFiles, [
     "adversarial-review.md",
     "cancel.md",
+    "grant-review.md",
     "paper-review.md",
     "rescue.md",
     "result.md",
@@ -107,6 +108,25 @@ test("continue is not exposed as a user-facing command", () => {
     "setup.md",
     "status.md"
   ]);
+});
+
+test("grant-review command reads proposal via stdin and stays review-only", () => {
+  const source = read("commands/grant-review.md");
+  assert.match(source, /AskUserQuestion/);
+  assert.match(source, /\bBash\(/);
+  assert.match(source, /Do not fix issues/i);
+  assert.match(source, /review-only/i);
+  assert.match(source, /return.*verbatim/i);
+  assert.match(source, /grant-review/);
+  assert.match(source, /--title/);
+  assert.match(source, /PROPOSAL_EOF/);
+  assert.match(source, /\bRead\b/);
+  assert.match(source, /run_in_background:\s*true/);
+  assert.match(source, /--panel/);
+  assert.match(source, /--agency/);
+  assert.match(source, /horizon.*erc.*ukri.*dfg.*anr.*snsf.*nwo.*nih.*nsf.*doe.*darpa/i);
+  assert.match(source, /Scientific Reviewer.*Program Officer.*Feasibility Assessor/i);
+  assert.doesNotMatch(source, /Bash\(git:/);
 });
 
 test("rescue command absorbs continue semantics", () => {

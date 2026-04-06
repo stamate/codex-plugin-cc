@@ -12,6 +12,7 @@ they already have.
 - `/codex:review` for a normal read-only Codex review
 - `/codex:adversarial-review` for a steerable challenge review
 - `/codex:paper-review` for academic paper peer review, with optional multi-persona panel (`--panel`) and venue calibration (`--venue`)
+- `/codex:grant-review` for research grant proposal peer review, with optional multi-persona panel (`--panel`) and agency calibration (`--agency`)
 - `/codex:rescue`, `/codex:status`, `/codex:result`, and `/codex:cancel` to delegate work and manage background jobs
 
 ## Requirements
@@ -217,6 +218,65 @@ Single-reviewer mode returns a structured review with recommendation (accept / m
 
 Panel mode additionally includes a score comparison table across all reviewers, consensus points, disagreements, priority action items, and the Area Chair's meta-review.
 
+### `/codex:grant-review`
+
+Runs a Codex peer review of a research grant proposal (PDF, Word, Markdown, or plain text).
+
+Codex evaluates the proposal across standard grant review dimensions: significance, innovation, approach, investigator, environment, budget, and timeline.
+
+> [!NOTE]
+> Grant reviews can take a while, especially in panel mode. It's generally recommended to run them in the background.
+
+Examples:
+
+```bash
+/codex:grant-review proposal.pdf
+/codex:grant-review proposal.pdf --panel --agency horizon
+/codex:grant-review proposal.pdf --panel --agency erc --background
+```
+
+This command is read-only and will not perform any changes.
+
+#### Panel review mode
+
+Use `--panel` to run a multi-persona review panel with three independent reviewers and a panel synthesis:
+
+- **Scientific Reviewer** — focuses on scientific merit, novelty, methodology, and feasibility
+- **Program Officer** — focuses on strategic fit, agency priorities, and portfolio alignment
+- **Feasibility Assessor** — focuses on budget justification, timeline realism, and team qualifications
+
+The panel synthesizes all three reviews, identifies consensus and disagreements, and produces a final funding recommendation with prioritized action items.
+
+```bash
+/codex:grant-review proposal.pdf --panel
+/codex:grant-review proposal.pdf --panel --agency nih
+/codex:grant-review proposal.pdf --panel --agency nsf focus on broader impacts
+```
+
+#### Agency calibration
+
+Use `--agency <name>` with `--panel` to calibrate the review to a specific funding agency's acceptance standards and priorities:
+
+| Agency | Acceptance Rate | Focus |
+|--------|----------------|-------|
+| `horizon` | ~20-25% | Excellence, impact, implementation quality (EU Horizon Europe) |
+| `erc` | ~10-15% | Scientific excellence, investigator track record (European Research Council) |
+| `ukri` | ~20-30% | Innovation, societal impact, national priority areas |
+| `dfg` | ~25-35% | Scientific quality, originality, feasibility (German Research Foundation) |
+| `anr` | ~15-25% | Scientific excellence, international collaboration (French National Research Agency) |
+| `snsf` | ~30-40% | Scientific merit, methodology, career development (Swiss National Science Foundation) |
+| `nwo` | ~20-30% | Scientific quality, societal relevance (Dutch Research Council) |
+| `nih` | ~15-20% | Significance, innovation, approach, investigators, environment |
+| `nsf` | ~20-25% | Intellectual merit, broader impacts |
+| `doe` | ~15-25% | Scientific merit, relevance to DOE mission, technology transfer potential |
+| `darpa` | ~10-15% | Revolutionary potential, technical feasibility, transition to practice |
+
+#### Review output
+
+Single-reviewer mode returns a structured review with recommendation (fund / fund-with-revisions / revise-and-resubmit / do-not-fund), strengths, weaknesses, detailed findings per review dimension, questions for investigators, and overall assessment.
+
+Panel mode additionally includes a score comparison table across all reviewers, consensus points, disagreements, priority action items, and the panel's funding recommendation.
+
 ### `/codex:status`
 
 Shows running and recent Codex jobs for the current repository.
@@ -294,6 +354,20 @@ When the review gate is enabled, the plugin uses a `Stop` hook to run a targeted
 
 ```bash
 /codex:paper-review paper.pdf --panel --venue neurips --background
+/codex:status
+/codex:result
+```
+
+### Review A Grant Proposal
+
+```bash
+/codex:grant-review proposal.pdf
+```
+
+### Multi-Persona Grant Review Panel
+
+```bash
+/codex:grant-review proposal.pdf --panel --agency nih --background
 /codex:status
 /codex:result
 ```
