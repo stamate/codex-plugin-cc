@@ -976,6 +976,13 @@ async function handlePaperReview(argv) {
     throw new Error("--venue requires --panel. Use `/codex:paper-review --panel --venue <name>` for venue-calibrated panel review.");
   }
 
+  if (options.code) {
+    const resolvedCode = path.resolve(cwd, options.code);
+    if (!fs.existsSync(resolvedCode)) {
+      throw new Error(`--code path does not exist: ${resolvedCode}`);
+    }
+  }
+
   if (options.panel) {
     const venueCalibration = options.venue ? getVenueCalibration(options.venue) : null;
     if (options.venue && !venueCalibration) {
@@ -1024,19 +1031,23 @@ async function handlePaperReview(argv) {
         });
 
         if (options.code) {
-          const alignmentResult = await executeCodeAlignmentRun({
-            cwd,
-            codePath: options.code,
-            documentContent: paperContent,
-            documentTitle: paperTitle,
-            focusText,
-            supplementaryDocs,
-            model,
-            effort,
-            onProgress: progress
-          });
-          rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
-          panelResult.codeAlignment = alignmentResult;
+          try {
+            const alignmentResult = await executeCodeAlignmentRun({
+              cwd,
+              codePath: options.code,
+              documentContent: paperContent,
+              documentTitle: paperTitle,
+              focusText,
+              supplementaryDocs,
+              model,
+              effort,
+              onProgress: progress
+            });
+            rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
+            panelResult.codeAlignment = alignmentResult;
+          } catch (alignErr) {
+            rendered += `\n## Code-Methods Alignment\n\nCode alignment failed: ${alignErr.message}\n`;
+          }
         }
 
         return {
@@ -1079,19 +1090,23 @@ async function handlePaperReview(argv) {
       });
 
       if (options.code) {
-        const alignmentResult = await executeCodeAlignmentRun({
-          cwd,
-          codePath: options.code,
-          documentContent: paperContent,
-          documentTitle: paperTitle,
-          focusText,
-          supplementaryDocs,
-          model,
-          effort,
-          onProgress: progress
-        });
-        reviewResult.rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
-        reviewResult.payload.codeAlignment = alignmentResult;
+        try {
+          const alignmentResult = await executeCodeAlignmentRun({
+            cwd,
+            codePath: options.code,
+            documentContent: paperContent,
+            documentTitle: paperTitle,
+            focusText,
+            supplementaryDocs,
+            model,
+            effort,
+            onProgress: progress
+          });
+          reviewResult.rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
+          reviewResult.payload.codeAlignment = alignmentResult;
+        } catch (alignErr) {
+          reviewResult.rendered += `\n## Code-Methods Alignment\n\nCode alignment failed: ${alignErr.message}\n`;
+        }
       }
 
       return reviewResult;
@@ -1127,6 +1142,13 @@ async function handleGrantReview(argv) {
     const agencyCheck = getAgencyCalibration(options.agency);
     if (!agencyCheck) {
       throw new Error(`Unknown agency "${options.agency}". Supported: horizon, erc, ukri, dfg, anr, snsf, nwo, nih, nsf, doe, darpa.`);
+    }
+  }
+
+  if (options.code) {
+    const resolvedCode = path.resolve(cwd, options.code);
+    if (!fs.existsSync(resolvedCode)) {
+      throw new Error(`--code path does not exist: ${resolvedCode}`);
     }
   }
 
@@ -1180,19 +1202,23 @@ async function handleGrantReview(argv) {
         });
 
         if (options.code) {
-          const alignmentResult = await executeCodeAlignmentRun({
-            cwd,
-            codePath: options.code,
-            documentContent: proposalContent,
-            documentTitle: proposalTitle,
-            focusText,
-            supplementaryDocs,
-            model,
-            effort,
-            onProgress: progress
-          });
-          rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
-          panelResult.codeAlignment = alignmentResult;
+          try {
+            const alignmentResult = await executeCodeAlignmentRun({
+              cwd,
+              codePath: options.code,
+              documentContent: proposalContent,
+              documentTitle: proposalTitle,
+              focusText,
+              supplementaryDocs,
+              model,
+              effort,
+              onProgress: progress
+            });
+            rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
+            panelResult.codeAlignment = alignmentResult;
+          } catch (alignErr) {
+            rendered += `\n## Code-Methods Alignment\n\nCode alignment failed: ${alignErr.message}\n`;
+          }
         }
 
         return {
@@ -1236,19 +1262,23 @@ async function handleGrantReview(argv) {
       });
 
       if (options.code) {
-        const alignmentResult = await executeCodeAlignmentRun({
-          cwd,
-          codePath: options.code,
-          documentContent: proposalContent,
-          documentTitle: proposalTitle,
-          focusText,
-          supplementaryDocs,
-          model,
-          effort,
-          onProgress: progress
-        });
-        reviewResult.rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
-        reviewResult.payload.codeAlignment = alignmentResult;
+        try {
+          const alignmentResult = await executeCodeAlignmentRun({
+            cwd,
+            codePath: options.code,
+            documentContent: proposalContent,
+            documentTitle: proposalTitle,
+            focusText,
+            supplementaryDocs,
+            model,
+            effort,
+            onProgress: progress
+          });
+          reviewResult.rendered += "\n" + renderCodeAlignmentResult(alignmentResult);
+          reviewResult.payload.codeAlignment = alignmentResult;
+        } catch (alignErr) {
+          reviewResult.rendered += `\n## Code-Methods Alignment\n\nCode alignment failed: ${alignErr.message}\n`;
+        }
       }
 
       return reviewResult;
