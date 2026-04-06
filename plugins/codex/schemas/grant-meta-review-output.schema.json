@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "recommendation",
+    "impact_score",
+    "summary",
+    "consensus_points",
+    "disagreements",
+    "aggregated_scores",
+    "budget_consensus",
+    "risk_consensus",
+    "priority_actions",
+    "overall_assessment"
+  ],
+  "properties": {
+    "recommendation": {
+      "type": "string",
+      "enum": ["fund", "fund-with-revisions", "revise-and-resubmit", "do-not-fund"]
+    },
+    "impact_score": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 9
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "consensus_points": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "disagreements": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "aggregated_scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["significance", "innovation", "approach", "investigator", "environment", "overall"],
+      "properties": {
+        "significance": { "type": "number", "minimum": 1, "maximum": 9 },
+        "innovation": { "type": "number", "minimum": 1, "maximum": 9 },
+        "approach": { "type": "number", "minimum": 1, "maximum": 9 },
+        "investigator": { "type": "number", "minimum": 1, "maximum": 9 },
+        "environment": { "type": "number", "minimum": 1, "maximum": 9 },
+        "overall": { "type": "number", "minimum": 1, "maximum": 9 }
+      }
+    },
+    "budget_consensus": {
+      "type": "string",
+      "minLength": 1
+    },
+    "risk_consensus": {
+      "type": "string",
+      "minLength": 1
+    },
+    "priority_actions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "overall_assessment": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
