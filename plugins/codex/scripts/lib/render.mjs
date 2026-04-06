@@ -860,7 +860,9 @@ export function renderGrantPanelReviewResult(panelResult, meta) {
       lines.push("");
       lines.push(`### ${r.persona || review.persona.label}`);
       lines.push(`Recommendation: ${r.recommendation}`);
-      lines.push(`Impact Score: ${r.impact_score}`);
+      if (r.impact_score != null) {
+        lines.push(`Impact Score: ${r.impact_score}`);
+      }
       lines.push("");
       if (r.summary) {
         lines.push(r.summary.trim(), "");

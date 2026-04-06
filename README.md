@@ -273,21 +273,21 @@ The panel synthesizes all three reviews, identifies consensus and disagreements,
 
 #### Agency calibration
 
-Use `--agency <name>` with `--panel` to calibrate the review to a specific funding agency's acceptance standards and priorities:
+Use `--agency <name>` to calibrate the review to a specific funding agency's acceptance standards and priorities. Works with both single and panel mode.
 
 | Agency | Acceptance Rate | Focus |
 |--------|----------------|-------|
-| `horizon` | ~20-25% | Excellence, impact, implementation quality (EU Horizon Europe) |
-| `erc` | ~10-15% | Scientific excellence, investigator track record (European Research Council) |
-| `ukri` | ~20-30% | Innovation, societal impact, national priority areas |
-| `dfg` | ~25-35% | Scientific quality, originality, feasibility (German Research Foundation) |
-| `anr` | ~15-25% | Scientific excellence, international collaboration (French National Research Agency) |
-| `snsf` | ~30-40% | Scientific merit, methodology, career development (Swiss National Science Foundation) |
-| `nwo` | ~20-30% | Scientific quality, societal relevance (Dutch Research Council) |
-| `nih` | ~15-20% | Significance, innovation, approach, investigators, environment |
-| `nsf` | ~20-25% | Intellectual merit, broader impacts |
-| `doe` | ~15-25% | Scientific merit, relevance to DOE mission, technology transfer potential |
-| `darpa` | ~10-15% | Revolutionary potential, technical feasibility, transition to practice |
+| `horizon` | ~15% | Excellence, impact, implementation quality (EU Horizon Europe) |
+| `erc` | ~14% | Scientific excellence, investigator track record (European Research Council) |
+| `ukri` | ~25-30% | Innovation, societal impact, national priority areas |
+| `dfg` | ~30% | Scientific quality, originality, feasibility (German Research Foundation) |
+| `anr` | ~24% | Scientific excellence, international collaboration (French National Research Agency) |
+| `snsf` | ~20-40% | Scientific merit, methodology, career development (Swiss National Science Foundation) |
+| `nwo` | ~14-20% | Scientific quality, societal relevance (Dutch Research Council) |
+| `nih` | ~20% | Significance, innovation, approach, investigators, environment |
+| `nsf` | ~25% | Intellectual merit, broader impacts |
+| `doe` | varies | Scientific merit, relevance to DOE mission, technology transfer potential |
+| `darpa` | varies | Revolutionary potential, technical feasibility, transition to practice |
 
 #### Review output
 

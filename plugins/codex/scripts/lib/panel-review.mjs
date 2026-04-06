@@ -193,7 +193,7 @@ export async function executePanelReviewRun(request, dependencies) {
 
   const settledResults = await Promise.allSettled(personaPromises);
   const personaResults = settledResults.map((settled) =>
-    settled.status === "fulfilled" ? settled.value : { status: 1, finalMessage: "", error: settled.reason, stderr: String(settled.reason?.message ?? ""), reasoningSummary: [] }
+    settled.status === "fulfilled" ? settled.value : { status: 1, finalMessage: "", error: settled.reason, stderr: String(settled.reason?.message ?? settled.reason ?? ""), reasoningSummary: [] }
   );
 
   const parsedReviews = [];
