@@ -463,6 +463,14 @@ export function renderPanelReviewResult(panelResult, meta) {
 
   lines.push(`Panel: ${validIndividual.length} reviewers + Area Chair`, "");
 
+  if (panelResult.incompletePanel) {
+    lines.push(`**Warning:** Only ${validIndividual.length} of the expected reviewers returned valid results. The panel recommendation may be less reliable.`, "");
+  }
+
+  if (panelResult.metaReviewFailed) {
+    lines.push("**Warning:** The Area Chair meta-review could not be parsed. Individual reviewer results are shown below without synthesis.", "");
+  }
+
   if (validIndividual.length > 0) {
     const dimensions = ["originality", "methodology", "clarity", "significance", "soundness", "overall", "confidence"];
     const headers = ["Dimension", ...validIndividual.map((r) => r.persona.label.replace("The ", ""))];
@@ -770,6 +778,14 @@ export function renderGrantPanelReviewResult(panelResult, meta) {
   }
 
   lines.push(`Panel: ${validIndividual.length} reviewers + Panel Chair`, "");
+
+  if (panelResult.incompletePanel) {
+    lines.push(`**Warning:** Only ${validIndividual.length} of the expected reviewers returned valid results. The panel recommendation may be less reliable.`, "");
+  }
+
+  if (panelResult.metaReviewFailed) {
+    lines.push("**Warning:** The Panel Chair meta-review could not be parsed. Individual reviewer results are shown below without synthesis.", "");
+  }
 
   if (validIndividual.length > 0) {
     const dimensions = ["significance", "innovation", "approach", "investigator", "environment", "overall", "confidence"];

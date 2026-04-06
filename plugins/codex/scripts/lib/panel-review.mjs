@@ -265,14 +265,18 @@ export async function executePanelReviewRun(request, dependencies) {
   }
 
   const weightedScores = computeWeightedScores(validReviews);
+  const incompletePanel = validReviews.length < personas.length;
+  const metaReviewFailed = metaParsed == null;
 
   return {
-    exitStatus: metaResult.status,
+    exitStatus: metaReviewFailed ? 1 : metaResult.status,
     threadId: metaResult.threadId,
     turnId: metaResult.turnId,
     individualReviews: parsedReviews,
     validReviews,
     metaReview: metaParsed,
+    metaReviewFailed,
+    incompletePanel,
     weightedScores,
     venueCalibration: request.venueCalibration
   };
