@@ -613,7 +613,8 @@ async function executeCodeAlignmentRun(request) {
     METHODS_SUMMARY: request.methodsSummary || request.documentContent,
     REVIEWER_FOCUS: request.focusText || "Check all alignment categories."
   });
-  const codePath = path.resolve(request.cwd, request.codePath);
+  const resolvedCodePath = path.resolve(request.cwd, request.codePath);
+  const codePath = fs.statSync(resolvedCodePath).isDirectory() ? resolvedCodePath : path.dirname(resolvedCodePath);
   const result = await runAppServerTurn(codePath, {
     prompt,
     model: request.model,
@@ -1128,6 +1129,7 @@ async function handleGrantReview(argv) {
             templateRootDir: ROOT_DIR,
             panelSchemaPath: GRANT_PANEL_REVIEW_SCHEMA,
             metaSchemaPath: GRANT_META_REVIEW_SCHEMA,
+            metaTemplateName: "grant-review-meta",
             personas: GRANT_PERSONAS,
             onProgress: progress
           },

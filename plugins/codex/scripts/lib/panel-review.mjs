@@ -33,12 +33,14 @@ export function buildPersonaPrompt({ templateRootDir, persona, paperContent, pap
   });
 }
 
-export function buildMetaReviewPrompt({ templateRootDir, paperTitle, reviewerReviews, venueCalibration }) {
-  const template = loadPromptTemplate(templateRootDir, "paper-review-meta");
+export function buildMetaReviewPrompt({ templateRootDir, metaTemplateName, paperTitle, reviewerReviews, venueCalibration }) {
+  const template = loadPromptTemplate(templateRootDir, metaTemplateName || "paper-review-meta");
   return interpolateTemplate(template, {
     PAPER_TITLE: paperTitle || "Untitled",
+    PROPOSAL_TITLE: paperTitle || "Untitled",
     REVIEWER_REVIEWS: reviewerReviews,
-    VENUE_CALIBRATION: venueCalibration || ""
+    VENUE_CALIBRATION: venueCalibration || "",
+    AGENCY_CALIBRATION: venueCalibration || ""
   });
 }
 
@@ -60,8 +62,25 @@ export function extractJsonFromThoughtResponse(response) {
   return null;
 }
 
+const PAPER_SCORE_DIMENSIONS = ["originality", "methodology", "clarity", "significance", "soundness", "overall"];
+const GRANT_SCORE_DIMENSIONS = ["significance", "innovation", "approach", "investigator", "environment", "overall"];
+
+function detectScoreDimensions(reviews) {
+  if (reviews.length === 0) {
+    return PAPER_SCORE_DIMENSIONS;
+  }
+  const firstScores = reviews[0].scores;
+  if (!firstScores) {
+    return PAPER_SCORE_DIMENSIONS;
+  }
+  if ("investigator" in firstScores || "approach" in firstScores) {
+    return GRANT_SCORE_DIMENSIONS;
+  }
+  return PAPER_SCORE_DIMENSIONS;
+}
+
 export function computeWeightedScores(reviews) {
-  const dimensions = ["originality", "methodology", "clarity", "significance", "soundness", "overall"];
+  const dimensions = detectScoreDimensions(reviews);
   const result = {};
 
   for (const dim of dimensions) {
@@ -88,7 +107,7 @@ export function formatReviewsForMetaPrompt(reviews) {
     const lines = [
       `### ${persona}`,
       `Recommendation: ${review.recommendation}`,
-      `Scores: originality=${review.scores?.originality}, methodology=${review.scores?.methodology}, clarity=${review.scores?.clarity}, significance=${review.scores?.significance}, soundness=${review.scores?.soundness}, overall=${review.scores?.overall}, confidence=${review.scores?.confidence}`,
+      `Scores: ${Object.entries(review.scores || {}).map(([k, v]) => `${k}=${v}`).join(", ")}`,
       "",
       `Summary: ${review.summary}`,
       ""
@@ -192,6 +211,7 @@ export async function executePanelReviewRun(request, dependencies) {
   const reviewsText = formatReviewsForMetaPrompt(validReviews);
   const metaPrompt = buildMetaReviewPrompt({
     templateRootDir: request.templateRootDir,
+    metaTemplateName: request.metaTemplateName,
     paperTitle: request.paperTitle,
     reviewerReviews: reviewsText,
     venueCalibration
