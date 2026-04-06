@@ -567,6 +567,325 @@ export function renderPanelReviewResult(panelResult, meta) {
   return `${lines.join("\n").trimEnd()}\n`;
 }
 
+function validateGrantReviewResultShape(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return "Expected a top-level JSON object.";
+  }
+  if (typeof data.recommendation !== "string" || !data.recommendation.trim()) {
+    return "Missing string `recommendation`.";
+  }
+  if (typeof data.impact_score !== "number") {
+    return "Missing number `impact_score`.";
+  }
+  if (typeof data.summary !== "string" || !data.summary.trim()) {
+    return "Missing string `summary`.";
+  }
+  if (!data.criterion_scores || typeof data.criterion_scores !== "object" || Array.isArray(data.criterion_scores)) {
+    return "Missing object `criterion_scores`.";
+  }
+  for (const dim of ["significance", "innovation", "approach", "investigator", "environment"]) {
+    const cs = data.criterion_scores[dim];
+    if (!cs || typeof cs !== "object" || Array.isArray(cs)) {
+      return `Missing criterion_scores.${dim} object.`;
+    }
+    if (typeof cs.score !== "number") {
+      return `Missing number criterion_scores.${dim}.score.`;
+    }
+    if (typeof cs.rationale !== "string") {
+      return `Missing string criterion_scores.${dim}.rationale.`;
+    }
+  }
+  if (!Array.isArray(data.strengths)) {
+    return "Missing array `strengths`.";
+  }
+  if (!Array.isArray(data.weaknesses)) {
+    return "Missing array `weaknesses`.";
+  }
+  if (!Array.isArray(data.findings)) {
+    return "Missing array `findings`.";
+  }
+  if (typeof data.budget_assessment !== "string" || !data.budget_assessment.trim()) {
+    return "Missing string `budget_assessment`.";
+  }
+  if (typeof data.timeline_assessment !== "string" || !data.timeline_assessment.trim()) {
+    return "Missing string `timeline_assessment`.";
+  }
+  if (typeof data.risk_assessment !== "string" || !data.risk_assessment.trim()) {
+    return "Missing string `risk_assessment`.";
+  }
+  if (!Array.isArray(data.recommendations_for_revision)) {
+    return "Missing array `recommendations_for_revision`.";
+  }
+  return null;
+}
+
+function normalizeGrantFinding(finding, index) {
+  const source = finding && typeof finding === "object" && !Array.isArray(finding) ? finding : {};
+  return {
+    category: typeof source.category === "string" && source.category.trim() ? source.category.trim() : "approach",
+    severity: typeof source.severity === "string" && source.severity.trim() ? source.severity.trim() : "minor",
+    title: typeof source.title === "string" && source.title.trim() ? source.title.trim() : `Finding ${index + 1}`,
+    body: typeof source.body === "string" && source.body.trim() ? source.body.trim() : "No details provided.",
+    section: typeof source.section === "string" && source.section.trim() ? source.section.trim() : "unknown",
+    recommendation: typeof source.recommendation === "string" ? source.recommendation.trim() : ""
+  };
+}
+
+export function renderGrantReviewResult(parsedResult, meta) {
+  if (!parsedResult.parsed) {
+    const lines = [
+      `# Codex ${meta.reviewLabel}`,
+      "",
+      "Codex did not return valid structured JSON.",
+      "",
+      `- Parse error: ${parsedResult.parseError}`
+    ];
+
+    if (parsedResult.rawOutput) {
+      lines.push("", "Raw final message:", "", "```text", parsedResult.rawOutput, "```");
+    }
+
+    appendReasoningSection(lines, meta.reasoningSummary ?? parsedResult.reasoningSummary);
+
+    return `${lines.join("\n").trimEnd()}\n`;
+  }
+
+  const validationError = validateGrantReviewResultShape(parsedResult.parsed);
+  if (validationError) {
+    const lines = [
+      `# Codex ${meta.reviewLabel}`,
+      "",
+      `Proposal: ${meta.targetLabel}`,
+      "Codex returned JSON with an unexpected review shape.",
+      "",
+      `- Validation error: ${validationError}`
+    ];
+
+    if (parsedResult.rawOutput) {
+      lines.push("", "Raw final message:", "", "```text", parsedResult.rawOutput, "```");
+    }
+
+    appendReasoningSection(lines, meta.reasoningSummary ?? parsedResult.reasoningSummary);
+
+    return `${lines.join("\n").trimEnd()}\n`;
+  }
+
+  const data = parsedResult.parsed;
+  const findings = data.findings
+    .map((finding, index) => normalizeGrantFinding(finding, index))
+    .sort((left, right) => paperSeverityRank(left.severity) - paperSeverityRank(right.severity));
+
+  const lines = [
+    `# Codex ${meta.reviewLabel}`,
+    "",
+    `Proposal: ${meta.targetLabel}`,
+    `Recommendation: ${data.recommendation}`,
+    `Impact Score: ${data.impact_score}`,
+    "",
+    data.summary.trim(),
+    ""
+  ];
+
+  const criterionDimensions = ["significance", "innovation", "approach", "investigator", "environment"];
+  lines.push("## Criterion Scores");
+  lines.push("| Criterion | Score | Rationale |");
+  lines.push("| --- | --- | --- |");
+  for (const dim of criterionDimensions) {
+    const cs = data.criterion_scores[dim];
+    const label = dim.charAt(0).toUpperCase() + dim.slice(1);
+    lines.push(`| ${label} | ${cs.score} | ${escapeMarkdownCell(cs.rationale)} |`);
+  }
+  lines.push("");
+
+  if (data.strengths.length > 0) {
+    lines.push("## Strengths");
+    for (const strength of data.strengths) {
+      if (typeof strength === "string" && strength.trim()) {
+        lines.push(`- ${strength.trim()}`);
+      }
+    }
+    lines.push("");
+  }
+
+  if (data.weaknesses.length > 0) {
+    lines.push("## Weaknesses");
+    for (const weakness of data.weaknesses) {
+      if (typeof weakness === "string" && weakness.trim()) {
+        lines.push(`- ${weakness.trim()}`);
+      }
+    }
+    lines.push("");
+  }
+
+  if (findings.length === 0) {
+    lines.push("No material findings.");
+  } else {
+    lines.push("## Findings");
+    for (const finding of findings) {
+      lines.push(`- [${finding.severity}] [${finding.category}] ${finding.title} (Section: ${finding.section})`);
+      lines.push(`  ${finding.body}`);
+      if (finding.recommendation) {
+        lines.push(`  Recommendation: ${finding.recommendation}`);
+      }
+    }
+  }
+
+  lines.push("", "## Budget Assessment", "", data.budget_assessment.trim());
+  lines.push("", "## Timeline Assessment", "", data.timeline_assessment.trim());
+  lines.push("", "## Risk Assessment", "", data.risk_assessment.trim());
+
+  if (data.recommendations_for_revision.length > 0) {
+    lines.push("", "## Recommendations for Revision");
+    for (let i = 0; i < data.recommendations_for_revision.length; i++) {
+      const item = data.recommendations_for_revision[i];
+      if (typeof item === "string" && item.trim()) {
+        lines.push(`${i + 1}. ${item.trim()}`);
+      }
+    }
+  }
+
+  appendReasoningSection(lines, meta.reasoningSummary);
+
+  return `${lines.join("\n").trimEnd()}\n`;
+}
+
+export function renderGrantPanelReviewResult(panelResult, meta) {
+  const { individualReviews, metaReview, weightedScores } = panelResult;
+  const validIndividual = individualReviews.filter((r) => r.parsed != null);
+
+  if (validIndividual.length === 0 && !metaReview) {
+    return `# Codex ${meta.reviewLabel}\n\nNo valid reviews were returned by the panel.\n`;
+  }
+
+  const recommendation = metaReview?.recommendation ?? validIndividual[0]?.parsed?.recommendation ?? "unknown";
+  const lines = [
+    `# Codex ${meta.reviewLabel}`,
+    "",
+    `Proposal: ${meta.targetLabel}`,
+    `Recommendation: ${recommendation}`
+  ];
+
+  if (meta.agencyLabel) {
+    lines.push(`Agency: ${meta.agencyLabel}`);
+  }
+
+  lines.push(`Panel: ${validIndividual.length} reviewers + Panel Chair`, "");
+
+  if (validIndividual.length > 0) {
+    const dimensions = ["significance", "innovation", "approach", "investigator", "environment", "overall", "confidence"];
+    const headers = ["Criterion", ...validIndividual.map((r) => r.persona.label.replace("The ", ""))];
+    if (weightedScores) {
+      headers.push("Weighted Avg");
+    }
+
+    lines.push("## Score Summary");
+    lines.push(`| ${headers.join(" | ")} |`);
+    lines.push(`| ${headers.map(() => "---").join(" | ")} |`);
+
+    for (const dim of dimensions) {
+      const row = [dim.charAt(0).toUpperCase() + dim.slice(1)];
+      for (const review of validIndividual) {
+        const cs = review.parsed.criterion_scores?.[dim];
+        const scoreVal = cs?.score ?? review.parsed.scores?.[dim] ?? "-";
+        row.push(String(scoreVal));
+      }
+      if (weightedScores && dim !== "confidence") {
+        row.push(String(weightedScores[dim] ?? "-"));
+      } else if (dim === "confidence") {
+        row.push("-");
+      }
+      lines.push(`| ${row.join(" | ")} |`);
+    }
+    lines.push("");
+  }
+
+  if (metaReview) {
+    if (metaReview.summary) {
+      lines.push(metaReview.summary.trim(), "");
+    }
+
+    if (metaReview.consensus_points?.length > 0) {
+      lines.push("## Consensus");
+      for (const point of metaReview.consensus_points) {
+        lines.push(`- ${point}`);
+      }
+      lines.push("");
+    }
+
+    if (metaReview.disagreements?.length > 0) {
+      lines.push("## Disagreements");
+      for (const point of metaReview.disagreements) {
+        lines.push(`- ${point}`);
+      }
+      lines.push("");
+    }
+
+    if (metaReview.budget_consensus) {
+      lines.push("## Budget Consensus", "", metaReview.budget_consensus.trim(), "");
+    }
+
+    if (metaReview.risk_consensus) {
+      lines.push("## Risk Consensus", "", metaReview.risk_consensus.trim(), "");
+    }
+
+    if (metaReview.priority_actions?.length > 0) {
+      lines.push("## Priority Actions");
+      for (let i = 0; i < metaReview.priority_actions.length; i++) {
+        lines.push(`${i + 1}. ${metaReview.priority_actions[i]}`);
+      }
+      lines.push("");
+    }
+  }
+
+  if (validIndividual.length > 0) {
+    lines.push("## Individual Reviews");
+    for (const review of validIndividual) {
+      const r = review.parsed;
+      lines.push("");
+      lines.push(`### ${r.persona || review.persona.label}`);
+      lines.push(`Recommendation: ${r.recommendation}`);
+      lines.push(`Impact Score: ${r.impact_score}`);
+      lines.push("");
+      if (r.summary) {
+        lines.push(r.summary.trim(), "");
+      }
+      if (r.strengths?.length > 0) {
+        lines.push("**Strengths:**");
+        for (const s of r.strengths) {
+          if (typeof s === "string" && s.trim()) lines.push(`- ${s.trim()}`);
+        }
+        lines.push("");
+      }
+      if (r.weaknesses?.length > 0) {
+        lines.push("**Weaknesses:**");
+        for (const w of r.weaknesses) {
+          if (typeof w === "string" && w.trim()) lines.push(`- ${w.trim()}`);
+        }
+        lines.push("");
+      }
+      if (r.findings?.length > 0) {
+        lines.push("**Findings:**");
+        for (const f of r.findings) {
+          const finding = normalizeGrantFinding(f, 0);
+          lines.push(`- [${finding.severity}] [${finding.category}] ${finding.title} (Section: ${finding.section})`);
+          lines.push(`  ${finding.body}`);
+          if (finding.recommendation) {
+            lines.push(`  Recommendation: ${finding.recommendation}`);
+          }
+        }
+        lines.push("");
+      }
+    }
+  }
+
+  if (metaReview?.overall_assessment) {
+    lines.push("## Panel Chair Summary", "");
+    lines.push(metaReview.overall_assessment.trim());
+  }
+
+  return `${lines.join("\n").trimEnd()}\n`;
+}
+
 export function renderNativeReviewResult(result, meta) {
   const stdout = result.stdout.trim();
   const stderr = result.stderr.trim();
