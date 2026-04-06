@@ -53,6 +53,8 @@ import {
 import { resolveWorkspaceRoot } from "./lib/workspace.mjs";
 import {
   renderNativeReviewResult,
+  renderPaperReviewResult,
+  renderPanelReviewResult,
   renderReviewResult,
   renderStoredJobResult,
   renderCancelReport,
@@ -61,9 +63,17 @@ import {
   renderStatusReport,
   renderTaskResult
 } from "./lib/render.mjs";
+import {
+  PERSONAS,
+  executePanelReviewRun as runPanelReview
+} from "./lib/panel-review.mjs";
+import { getVenueCalibration } from "./lib/venue-calibration.mjs";
 
 const ROOT_DIR = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "review-output.schema.json");
+const PAPER_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "paper-review-output.schema.json");
+const PANEL_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "panel-review-output.schema.json");
+const META_REVIEW_SCHEMA = path.join(ROOT_DIR, "schemas", "meta-review-output.schema.json");
 const DEFAULT_STATUS_WAIT_TIMEOUT_MS = 240000;
 const DEFAULT_STATUS_POLL_INTERVAL_MS = 2000;
 const VALID_REASONING_EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh"]);
@@ -75,6 +85,7 @@ function printUsage() {
     [
       "Usage:",
       "  node scripts/codex-companion.mjs setup [--enable-review-gate|--disable-review-gate] [--json]",
+      "  node scripts/codex-companion.mjs paper-review [--panel] [--venue <venue>] [--reflect] [--model <model>] [--effort <effort>] [--title <title>] [focus text]  (reads paper from stdin)",
       "  node scripts/codex-companion.mjs review [--wait|--background] [--base <ref>] [--scope <auto|working-tree|branch>]",
       "  node scripts/codex-companion.mjs adversarial-review [--wait|--background] [--base <ref>] [--scope <auto|working-tree|branch>] [focus text]",
       "  node scripts/codex-companion.mjs task [--background] [--write] [--resume-last|--resume|--fresh] [--model <model|spark>] [--effort <none|minimal|low|medium|high|xhigh>] [prompt]",
@@ -242,6 +253,15 @@ function buildAdversarialReviewPrompt(context, focusText) {
     TARGET_LABEL: context.target.label,
     USER_FOCUS: focusText || "No extra focus provided.",
     REVIEW_INPUT: context.content
+  });
+}
+
+function buildPaperReviewPrompt(paperContent, focusText, paperTitle) {
+  const template = loadPromptTemplate(ROOT_DIR, "paper-review");
+  return interpolateTemplate(template, {
+    PAPER_TITLE: paperTitle || "Untitled",
+    REVIEWER_FOCUS: focusText || "No specific focus provided. Review all dimensions.",
+    PAPER_CONTENT: paperContent
   });
 }
 
@@ -427,6 +447,62 @@ async function executeReviewRun(request) {
 }
 
 
+async function executePaperReviewRun(request) {
+  ensureCodexReady(request.cwd);
+
+  const prompt = buildPaperReviewPrompt(
+    request.paperContent,
+    request.focusText,
+    request.paperTitle
+  );
+  const workspaceRoot = resolveWorkspaceRoot(request.cwd);
+  const result = await runAppServerTurn(workspaceRoot, {
+    prompt,
+    model: request.model,
+    effort: request.effort,
+    sandbox: "read-only",
+    outputSchema: readOutputSchema(PAPER_REVIEW_SCHEMA),
+    onProgress: request.onProgress
+  });
+  const parsed = parseStructuredOutput(result.finalMessage, {
+    status: result.status,
+    failureMessage: result.error?.message ?? result.stderr
+  });
+  const reviewName = "Paper Review";
+  const targetLabel = request.paperTitle || "academic paper";
+  const payload = {
+    review: reviewName,
+    paperTitle: request.paperTitle,
+    threadId: result.threadId,
+    codex: {
+      status: result.status,
+      stderr: result.stderr,
+      stdout: result.finalMessage,
+      reasoning: result.reasoningSummary
+    },
+    result: parsed.parsed,
+    rawOutput: parsed.rawOutput,
+    parseError: parsed.parseError,
+    reasoningSummary: result.reasoningSummary
+  };
+
+  return {
+    exitStatus: result.status,
+    threadId: result.threadId,
+    turnId: result.turnId,
+    payload,
+    rendered: renderPaperReviewResult(parsed, {
+      reviewLabel: reviewName,
+      targetLabel,
+      reasoningSummary: result.reasoningSummary
+    }),
+    summary: parsed.parsed?.summary ?? parsed.parseError ?? firstMeaningfulLine(result.finalMessage, `${reviewName} finished.`),
+    jobTitle: `Codex ${reviewName}`,
+    jobClass: "review",
+    targetLabel
+  };
+}
+
 async function executeTaskRun(request) {
   const workspaceRoot = resolveWorkspaceRoot(request.cwd);
   ensureCodexReady(request.cwd);
@@ -529,6 +605,12 @@ function renderQueuedTaskLaunch(payload) {
 function getJobKindLabel(kind, jobClass) {
   if (kind === "adversarial-review") {
     return "adversarial-review";
+  }
+  if (kind === "paper-review") {
+    return "paper-review";
+  }
+  if (kind === "panel-review") {
+    return "panel-review";
   }
   return jobClass === "review" ? "review" : "rescue";
 }
@@ -699,6 +781,115 @@ async function handleReview(argv) {
     reviewName: "Review",
     validateRequest: validateNativeReviewRequest
   });
+}
+
+async function handlePaperReview(argv) {
+  const { options, positionals } = parseCommandInput(argv, {
+    valueOptions: ["model", "effort", "cwd", "title", "venue", "reviewers"],
+    booleanOptions: ["json", "background", "wait", "panel", "reflect"],
+    aliasMap: {
+      m: "model"
+    }
+  });
+
+  const cwd = resolveCommandCwd(options);
+  const workspaceRoot = resolveCommandWorkspace(options);
+  const model = normalizeRequestedModel(options.model);
+  const effort = normalizeReasoningEffort(options.effort);
+  const focusText = positionals.join(" ").trim();
+  const paperContent = readStdinIfPiped();
+
+  if (!paperContent) {
+    throw new Error("No paper content provided. Pipe the paper text to this command via stdin.");
+  }
+
+  const paperTitle = options.title || "";
+
+  if (options.panel) {
+    const venueCalibration = options.venue ? getVenueCalibration(options.venue) : null;
+    if (options.venue && !venueCalibration) {
+      throw new Error(`Unknown venue "${options.venue}". Supported: neurips, icml, iclr, acl, nature, workshop.`);
+    }
+
+    const job = createCompanionJob({
+      prefix: "review",
+      kind: "panel-review",
+      title: "Codex Paper Review Panel",
+      workspaceRoot,
+      jobClass: "review",
+      summary: `Panel Review${paperTitle ? `: ${shorten(paperTitle)}` : ""}`
+    });
+
+    await runForegroundCommand(
+      job,
+      async (progress) => {
+        const panelResult = await runPanelReview(
+          {
+            cwd,
+            model,
+            effort,
+            paperContent,
+            paperTitle,
+            focusText,
+            venueCalibration,
+            templateRootDir: ROOT_DIR,
+            panelSchemaPath: PANEL_REVIEW_SCHEMA,
+            metaSchemaPath: META_REVIEW_SCHEMA,
+            onProgress: progress
+          },
+          {
+            runAppServerTurn,
+            readOutputSchema,
+            parseStructuredOutput,
+            resolveWorkspaceRoot
+          }
+        );
+
+        const rendered = renderPanelReviewResult(panelResult, {
+          reviewLabel: "Paper Review Panel",
+          targetLabel: paperTitle || "academic paper",
+          venueLabel: venueCalibration?.name ?? null
+        });
+
+        return {
+          exitStatus: panelResult.exitStatus,
+          threadId: panelResult.threadId,
+          turnId: panelResult.turnId,
+          payload: panelResult,
+          rendered,
+          summary: panelResult.metaReview?.summary ?? `Panel review finished.`,
+          jobTitle: "Codex Paper Review Panel",
+          jobClass: "review"
+        };
+      },
+      { json: options.json }
+    );
+    return;
+  }
+
+  const job = createCompanionJob({
+    prefix: "review",
+    kind: "paper-review",
+    title: "Codex Paper Review",
+    workspaceRoot,
+    jobClass: "review",
+    summary: `Paper Review${paperTitle ? `: ${shorten(paperTitle)}` : ""}`
+  });
+
+  await runForegroundCommand(
+    job,
+    (progress) =>
+      executePaperReviewRun({
+        cwd,
+        model,
+        effort,
+        paperContent,
+        paperTitle,
+        focusText,
+        onProgress: progress
+      }),
+    { json: options.json }
+  );
 }
 
 async function handleTask(argv) {
@@ -976,6 +1167,9 @@ async function main() {
       await handleReviewCommand(argv, {
         reviewName: "Adversarial Review"
       });
+      break;
+    case "paper-review":
+      await handlePaperReview(argv);
       break;
     case "task":
       await handleTask(argv);
