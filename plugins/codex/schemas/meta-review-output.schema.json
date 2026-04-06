@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "recommendation",
+    "summary",
+    "consensus_points",
+    "disagreements",
+    "aggregated_scores",
+    "priority_actions",
+    "overall_assessment"
+  ],
+  "properties": {
+    "recommendation": {
+      "type": "string",
+      "enum": ["accept", "minor-revision", "major-revision", "reject"]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "consensus_points": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "disagreements": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "aggregated_scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["originality", "methodology", "clarity", "significance", "soundness", "overall"],
+      "properties": {
+        "originality": { "type": "number", "minimum": 1, "maximum": 4 },
+        "methodology": { "type": "number", "minimum": 1, "maximum": 4 },
+        "clarity": { "type": "number", "minimum": 1, "maximum": 4 },
+        "significance": { "type": "number", "minimum": 1, "maximum": 4 },
+        "soundness": { "type": "number", "minimum": 1, "maximum": 4 },
+        "overall": { "type": "number", "minimum": 1, "maximum": 10 }
+      }
+    },
+    "priority_actions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "overall_assessment": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
