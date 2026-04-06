@@ -625,7 +625,9 @@ async function executeCodeAlignmentRun(request) {
   const template = loadPromptTemplate(ROOT_DIR, "code-methods-alignment");
   const prompt = interpolateTemplate(template, {
     PAPER_TITLE: request.documentTitle || "Untitled",
-    METHODS_SUMMARY: request.methodsSummary || request.documentContent,
+    METHODS_SUMMARY: request.supplementaryDocs
+      ? `${request.methodsSummary || request.documentContent}\n\n--- Supplementary Documents ---\n${request.supplementaryDocs}`
+      : (request.methodsSummary || request.documentContent),
     REVIEWER_FOCUS: request.focusText || "Check all alignment categories."
   });
   const resolvedCodePath = path.resolve(request.cwd, request.codePath);
@@ -1022,6 +1024,7 @@ async function handlePaperReview(argv) {
             documentContent: paperContent,
             documentTitle: paperTitle,
             focusText,
+            supplementaryDocs,
             model,
             effort,
             onProgress: progress
@@ -1076,6 +1079,7 @@ async function handlePaperReview(argv) {
           documentContent: paperContent,
           documentTitle: paperTitle,
           focusText,
+          supplementaryDocs,
           model,
           effort,
           onProgress: progress
@@ -1169,6 +1173,7 @@ async function handleGrantReview(argv) {
             documentContent: proposalContent,
             documentTitle: proposalTitle,
             focusText,
+            supplementaryDocs,
             model,
             effort,
             onProgress: progress
@@ -1224,6 +1229,7 @@ async function handleGrantReview(argv) {
           documentContent: proposalContent,
           documentTitle: proposalTitle,
           focusText,
+          supplementaryDocs,
           model,
           effort,
           onProgress: progress

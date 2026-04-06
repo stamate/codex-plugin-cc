@@ -2,7 +2,7 @@
 description: Run a Codex peer review of a research grant proposal
 argument-hint: '<file> [--panel] [--agency <horizon|erc|ukri|dfg|anr|snsf|nwo|nih|nsf|doe|darpa>] [--docs <folder>] [--code <path>] [--wait|--background] [--model <model>] [--effort <effort>] [--title <title>] [focus ...]'
 disable-model-invocation: true
-allowed-tools: Read, Bash(node:*), AskUserQuestion
+allowed-tools: Read, Bash(node:*), Bash(cat:*), AskUserQuestion
 ---
 
 Run a grant proposal review through the shared plugin runtime.

@@ -2,7 +2,7 @@
 description: Run a Codex peer review of an academic paper
 argument-hint: '<file> [--panel] [--venue <neurips|icml|iclr|acl|nature|workshop>] [--docs <folder>] [--code <path>] [--wait|--background] [--model <model>] [--effort <effort>] [--title <title>] [focus ...]'
 disable-model-invocation: true
-allowed-tools: Read, Bash(node:*), AskUserQuestion
+allowed-tools: Read, Bash(node:*), Bash(cat:*), AskUserQuestion
 ---
 
 Run an academic peer review of a paper through the shared plugin runtime.
