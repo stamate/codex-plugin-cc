@@ -911,10 +911,14 @@ export function renderCodeAlignmentResult(alignmentResult) {
   }
 
   const data = alignmentResult.parsed;
+  if (!data.alignment_verdict || !Array.isArray(data.alignment_findings)) {
+    return `## Code-Methods Alignment\n\nCode alignment returned incomplete results (missing verdict or findings).\n\n\`\`\`text\n${alignmentResult.rawOutput || JSON.stringify(data)}\n\`\`\`\n`;
+  }
+
   const lines = [
     "## Code-Methods Alignment",
     "",
-    `Verdict: ${data.alignment_verdict || "unknown"}`,
+    `Verdict: ${data.alignment_verdict}`,
     ""
   ];
 

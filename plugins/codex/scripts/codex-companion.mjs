@@ -976,6 +976,10 @@ async function handlePaperReview(argv) {
     throw new Error("--venue requires --panel. Use `/codex:paper-review --panel --venue <name>` for venue-calibrated panel review.");
   }
 
+  if (options.docs && !supplementaryDocs) {
+    process.stderr.write("Warning: --docs was specified but no supplementary documents were found in stdin. Use the slash command `/codex:paper-review` which reads the docs folder automatically.\n");
+  }
+
   if (options.code) {
     const resolvedCode = path.resolve(cwd, options.code);
     if (!fs.existsSync(resolvedCode)) {
@@ -1143,6 +1147,10 @@ async function handleGrantReview(argv) {
     if (!agencyCheck) {
       throw new Error(`Unknown agency "${options.agency}". Supported: horizon, erc, ukri, dfg, anr, snsf, nwo, nih, nsf, doe, darpa.`);
     }
+  }
+
+  if (options.docs && !supplementaryDocs) {
+    process.stderr.write("Warning: --docs was specified but no supplementary documents were found in stdin. Use the slash command `/codex:grant-review` which reads the docs folder automatically.\n");
   }
 
   if (options.code) {

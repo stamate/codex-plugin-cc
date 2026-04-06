@@ -220,7 +220,9 @@ export async function executePanelReviewRun(request, dependencies) {
     });
   }
 
-  const validReviews = parsedReviews.filter((r) => r.parsed != null).map((r) => r.parsed);
+  const validReviews = parsedReviews
+    .filter((r) => r.parsed != null && typeof r.parsed.recommendation === "string" && r.parsed.scores != null)
+    .map((r) => r.parsed);
 
   if (validReviews.length === 0) {
     return {
