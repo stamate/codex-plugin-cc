@@ -6,12 +6,9 @@ export function loadPromptTemplate(rootDir, name) {
   return fs.readFileSync(promptPath, "utf8");
 }
 
-const CONTENT_VARIABLES = new Set([
-  "PAPER_CONTENT",
-  "PROPOSAL_CONTENT",
-  "SUPPLEMENTARY_DOCS",
-  "METHODS_SUMMARY",
-  "REVIEWER_REVIEWS"
+const TRUSTED_VARIABLES = new Set([
+  "VENUE_CALIBRATION",
+  "AGENCY_CALIBRATION"
 ]);
 
 function escapeContentForPrompt(value) {
@@ -27,6 +24,6 @@ export function interpolateTemplate(template, variables) {
       return "";
     }
     const value = variables[key];
-    return CONTENT_VARIABLES.has(key) ? escapeContentForPrompt(value) : value;
+    return TRUSTED_VARIABLES.has(key) ? value : escapeContentForPrompt(value);
   });
 }

@@ -67,9 +67,10 @@ Argument handling:
 - Preserve the user's arguments exactly.
 - Do not strip `--wait` or `--background` yourself.
 - The companion script parses `--wait` and `--background`, but Claude Code's `Bash(..., run_in_background: true)` is what actually detaches the run.
-- Pass `--title "Extracted Grant Title"` so the review output includes the grant title.
+- Pass `--title` with the extracted grant title. Shell-escape the title: replace single quotes with `'\''` and wrap in single quotes (e.g., `--title 'A Grant'\''s Title'`).
 - Pass `--model` and `--effort` through if the user specified them.
-- Any remaining text after flags becomes focus text (positional arguments to the companion script).
+- Any remaining text after flags becomes focus text. Shell-escape focus text the same way as the title.
+- Shell-escape any `--code` or `--docs` paths that contain special characters.
 
 Foreground flow:
 - Pipe the extracted proposal text to the companion script via stdin using a heredoc:
