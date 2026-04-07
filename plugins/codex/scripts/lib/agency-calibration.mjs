@@ -249,6 +249,84 @@ const AGENCIES = {
       "Assess feasibility through the lens of whether the team can deliver a working demonstration,",
       "  not whether the ultimate vision is guaranteed to succeed."
     ].join("\n")
+  },
+  msca: {
+    name: "Marie Sklodowska-Curie Actions (MSCA)",
+    region: "EU",
+    acceptanceRate: "~15%",
+    scoringSystem: "0-5 per criterion; overall threshold 70/100. Excellence 50%, Impact 30%, Implementation 20%.",
+    keyCriteria: ["Excellence (research quality, career development, training)", "Impact (career prospects, dissemination)", "Implementation (feasibility, host capacity, management)"],
+    promptSection: [
+      "You are calibrating this review to MSCA standards.",
+      "MSCA Postdoctoral Fellowships accept roughly 15% of applications. The bar is high and competition is fierce.",
+      "Scoring is 0-5 per criterion (Excellence, Impact, Implementation); overall threshold is 70/100.",
+      "Excellence carries 50% weight, Impact 30%, Implementation 20%.",
+      "Score 5: Excellent — the proposal fully addresses all aspects of the criterion with no weaknesses.",
+      "Score 4: Very Good — the proposal addresses the criterion very well with minor weaknesses.",
+      "Score 3: Good — meets expectations but with notable shortcomings.",
+      "Score 2: Fair — significant weaknesses that undermine the criterion.",
+      "Score 1: Poor — the criterion is inadequately addressed; fundamental flaws present.",
+      "Excellence assesses the novelty and quality of the research objectives, the quality of the planned training,",
+      "  and the credibility of the career development plan for the researcher.",
+      "The researcher's CV and mobility pattern are heavily weighted — candidates must change country (mobility rule).",
+      "Two-way knowledge transfer between the researcher and the host institution is expected and assessed.",
+      "Training-through-research is the core philosophy: the research project is the vehicle for skills acquisition.",
+      "Impact evaluates the researcher's future career prospects, dissemination and exploitation plans,",
+      "  and the broader contribution to science and society.",
+      "Implementation assesses the quality and feasibility of the work plan, the host institution's capacity,",
+      "  supervisory arrangements, and the integration plan within the host research group.",
+      "Only proposals scoring above threshold on all three criteria and demonstrating genuine researcher development should be recommended."
+    ].join("\n")
+  },
+  uefiscdi: {
+    name: "UEFISCDI (Executive Unit for Higher Education, Research, Development and Innovation)",
+    region: "Romania",
+    acceptanceRate: "~20-30%",
+    scoringSystem: "1-5 per criterion; weighted average determines funding.",
+    keyCriteria: ["Scientific quality", "Methodology", "Feasibility", "PI capability", "Expected impact"],
+    promptSection: [
+      "You are calibrating this review to UEFISCDI standards.",
+      "UEFISCDI is Romania's national research funding agency, managing the PN-III national research programmes.",
+      "Acceptance rates range from 20-30% depending on the specific programme and call.",
+      "Key programmes: PCE (Exploratory Research, up to 3 years, fundamental research),",
+      "  TE (Young Teams, early-career PIs under 35 at submission), PD (Postdoctoral individual fellowships).",
+      "Scoring is 1-5 per criterion: 1=Poor, 2=Fair, 3=Good, 4=Very Good, 5=Excellent.",
+      "Criteria assessed: scientific quality, methodology, feasibility, PI capability, and expected impact.",
+      "Preliminary data are critical for credibility — proposals without supporting evidence score poorly.",
+      "ISI journal publications (Web of Science indexed) are the primary measure of research impact and output.",
+      "International collaboration is highly valued — co-PIs from institutions abroad strengthen proposals significantly.",
+      "Budget must be realistic and justified line-by-line; vague or inflated budgets are penalised.",
+      "PI track record is heavily weighted: H-index, citation counts, and prior grants managed are scrutinised.",
+      "For TE grants, assess the young PI's trajectory toward independence and team-building capacity.",
+      "For PD fellowships, the quality of the mentoring environment and career development plan matter.",
+      "Methodological rigour must be demonstrated with specific techniques, timelines, and contingency plans.",
+      "Proposals should clearly articulate contribution to Romania's research capacity and international visibility."
+    ].join("\n")
+  },
+  pnrr: {
+    name: "PNRR (National Recovery and Resilience Plan — Romania)",
+    region: "Romania",
+    acceptanceRate: "varies by component",
+    scoringSystem: "Threshold-based with minimum score per criterion.",
+    keyCriteria: ["Relevance to PNRR objectives", "Technical quality", "Sustainability", "Budget efficiency"],
+    promptSection: [
+      "You are calibrating this review to PNRR standards.",
+      "PNRR is funded by EU Next Generation funds, administered by the Romanian government.",
+      "Component 9 covers R&D support under Pillar VI (Policies for the Next Generation).",
+      "Acceptance rates vary by component and call; evaluation is threshold-based with minimum scores per criterion.",
+      "Proposals must explicitly align with digital transition and/or green transition objectives.",
+      "Sustainability beyond the funding period is critical — reviewers assess what happens after PNRR money ends.",
+      "A credible sustainability plan demonstrating continued impact post-funding is mandatory.",
+      "Measurable milestones with clear verification means are required at each project phase.",
+      "Budget efficiency is scrutinised heavily — cost per deliverable and value for money matter.",
+      "Co-financing may apply depending on the specific component and call requirements.",
+      "Timeline adherence is strict — PNRR operates under EU-mandated deadlines with no flexibility for extensions.",
+      "Proposals must contribute to Romania's R&D capacity building and institutional development.",
+      "TRL (Technology Readiness Level) context varies by call — verify the expected TRL range before writing.",
+      "Digital and green transition alignment is not optional — proposals lacking this are rejected outright.",
+      "Implementation capacity of the applicant institution is assessed: infrastructure, personnel, track record.",
+      "All deliverables must have quantifiable indicators tied to Romania's National Recovery and Resilience Plan targets."
+    ].join("\n")
   }
 };
 
