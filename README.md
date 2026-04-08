@@ -23,16 +23,15 @@ they already have.
 
 ## Install
 
-Add the marketplace in Claude Code:
-
+**Option A — Agent Skills** (recommended, works with Claude Code, Codex, Cursor, etc.):
 ```bash
-/plugin marketplace add stamate/codex-plugin-cc
+npx skills add stamate/codex-plugin-cc
 ```
 
-Install the plugin:
-
+**Option B — Claude Code plugin**:
 ```bash
-/plugin install codex@stamate-codex
+/plugin marketplace add stamate/codex-plugin-cc
+/plugin install codex@stm-codex
 ```
 
 Reload plugins:
